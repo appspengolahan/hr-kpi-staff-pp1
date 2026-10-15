@@ -426,31 +426,51 @@ export const KpiScorecardCalculator: React.FC = () => {
       
       {/* Top Banner Navigation & Executive Tab Controls */}
       <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 uppercase tracking-wider font-mono">
-                PT BATU KARANG &bull; DIVISI PRODUKSI I
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Sistem Penilaian Kinerja 360° (Hybrid Kuantitatif &amp; Kualitatif)
-              </span>
-            </div>
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <FileBadge className="w-5 h-5 text-amber-500 shrink-0" />
-              <span>Evaluator &amp; Lembar Penilaian Kinerja Karyawan (KPI)</span>
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-3xl leading-relaxed">
-              Mengintegrasikan data kuantitatif kuesioner 4 responden dengan **Penerjemah Narasi Kualitatif (BARS)**, 
-              sehingga angka skor 1–5 langsung dipahami sebagai perilaku nyata di lantai pabrik dan siap ditindaklanjuti.
-            </p>
+        {/* Header Title Section: Full width, clean hierarchy */}
+        <div className="space-y-2 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 uppercase tracking-wider font-mono">
+              PT BATU KARANG &bull; DIVISI PRODUKSI I
+            </span>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Sistem Penilaian Kinerja 360° (Hybrid Kuantitatif &amp; Kualitatif)
+            </span>
           </div>
 
-          {/* Action Buttons: Penugasan Manajer, Entri Data, Self-Service, Share Link & PDF Export */}
-          <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                <FileBadge className="w-5 h-5 text-amber-500 shrink-0" />
+                <span>Evaluator &amp; Lembar Penilaian Kinerja Karyawan (KPI)</span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-4xl leading-relaxed">
+                Mengintegrasikan data kuantitatif kuesioner 4 responden dengan <strong className="text-slate-700 dark:text-slate-300">Penerjemah Narasi Kualitatif (BARS)</strong>, 
+                sehingga angka skor 1–5 langsung dipahami sebagai perilaku nyata di lantai pabrik dan siap ditindaklanjuti.
+              </p>
+            </div>
+
+            {/* Quick Export PDF on top right */}
+            <div className="shrink-0 self-start lg:self-center">
+              <button
+                onClick={handleExportOfficialPdf}
+                disabled={isExportingPdf}
+                className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all border border-slate-700"
+              >
+                <Download className="w-3.5 h-3.5 text-amber-400 dark:text-white" />
+                <span>{isExportingPdf ? 'Membuat PDF...' : 'Ekspor PDF Terpadu'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Action Toolbar: Organized Row */}
+          <div className="pt-2 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1">
+              Aksi Cepat:
+            </span>
+
             <button
               onClick={() => setIsQueueManagerModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-sm transition-all border border-amber-400 hover:scale-[1.02]"
+              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-sm transition-all border border-amber-400 hover:scale-[1.01]"
               title="Kelola Daftar Penugasan Evaluasi Kinerja (Prioritas Habis Kontrak PKWT)"
             >
               <ClipboardList className="w-3.5 h-3.5 text-slate-950" />
@@ -462,7 +482,7 @@ export const KpiScorecardCalculator: React.FC = () => {
 
             <button
               onClick={() => setIsShareModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black flex items-center gap-1.5 shadow-sm transition-all border border-indigo-500 hover:scale-[1.02]"
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black flex items-center gap-1.5 shadow-sm transition-all border border-indigo-500 hover:scale-[1.01]"
               title="Bagikan Tautan Kuesioner (WhatsApp / URL) ke Atasan atau Rekan Kerja"
             >
               <Share2 className="w-3.5 h-3.5 text-amber-300" />
@@ -474,7 +494,7 @@ export const KpiScorecardCalculator: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('respondent_self_service')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm transition-all border ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm transition-all border ${
                 activeTab === 'respondent_self_service'
                   ? 'bg-amber-500 text-slate-950 border-amber-400'
                   : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500'
@@ -489,22 +509,13 @@ export const KpiScorecardCalculator: React.FC = () => {
 
             <button
               onClick={() => setIsEntryModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-sm transition-all"
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black flex items-center gap-1.5 shadow-sm transition-all"
             >
               <Edit3 className="w-3.5 h-3.5" />
               <span>Entri / Kalibrasi Data KPI</span>
               <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-950/20 text-slate-950 font-mono">
                 Admin
               </span>
-            </button>
-
-            <button
-              onClick={handleExportOfficialPdf}
-              disabled={isExportingPdf}
-              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all border border-slate-700"
-            >
-              <Download className="w-3.5 h-3.5 text-amber-400 dark:text-white" />
-              <span>{isExportingPdf ? 'Membuat PDF...' : 'Ekspor PDF Terpadu'}</span>
             </button>
           </div>
         </div>
