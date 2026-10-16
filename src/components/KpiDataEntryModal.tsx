@@ -388,76 +388,82 @@ export const KpiDataEntryModal: React.FC<KpiDataEntryModalProps> = ({
           </button>
         </div>
 
-        {/* Navigation Tabs inside Modal */}
-        <div className="flex items-center gap-1.5 px-5 pt-3 border-b border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900 overflow-x-auto text-xs">
+        {/* Navigation Tabs inside Modal: Pill style with ample padding and sleek scrollbar so text is never obscured */}
+        <div className="flex items-center gap-2 px-5 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/90 overflow-x-auto text-xs shrink-0 [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-slate-300 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full">
           <button
+            type="button"
             onClick={() => setEntryMode('quick_matrix')}
-            className={`px-3 py-2 font-bold border-b-2 transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-2xs ${
               entryMode === 'quick_matrix'
-                ? 'border-amber-500 text-amber-600 dark:text-amber-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-xs ring-1 ring-amber-400'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
           >
             <span>1. Entri Matriks &amp; Otoritas Penilai</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setEntryMode('supervisor_prerogative')}
-            className={`px-3 py-2 font-bold border-b-2 transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-2xs ${
               entryMode === 'supervisor_prerogative'
-                ? 'border-amber-600 text-amber-700 dark:text-amber-300'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'bg-amber-600 text-white font-black shadow-xs ring-1 ring-amber-500'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
           >
-            <Crown className="w-3.5 h-3.5 text-amber-500" />
+            <Crown className="w-3.5 h-3.5 text-amber-400" />
             <span>2. Panduan Khusus Penilaian Mutlak Atasan</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setEntryMode('bars_behavior')}
-            className={`px-3 py-2 font-bold border-b-2 transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-2xs ${
               entryMode === 'bars_behavior'
-                ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'bg-indigo-600 text-white font-black shadow-xs ring-1 ring-indigo-500'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
             <span>3. Kalibrasi Perilaku BARS</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setEntryMode('peer_sbi')}
-            className={`px-3 py-2 font-bold border-b-2 transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-2xs ${
               entryMode === 'peer_sbi'
-                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'bg-emerald-600 text-white font-black shadow-xs ring-1 ring-emerald-500'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
           >
-            <UserCheck className="w-3.5 h-3.5" />
+            <UserCheck className="w-3.5 h-3.5 text-white" />
             <span>4. Catatan Kualitatif SBI</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setEntryMode('attendance_sanctions')}
-            className={`px-3 py-2 font-bold border-b-2 transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-2xs ${
               entryMode === 'attendance_sanctions'
-                ? 'border-red-500 text-red-600 dark:text-red-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'bg-rose-600 text-white font-black shadow-xs ring-1 ring-rose-500'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
           >
-            <ShieldAlert className="w-3.5 h-3.5" />
+            <ShieldAlert className="w-3.5 h-3.5 text-white" />
             <span>5. Presensi &amp; Sanksi Riil</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setEntryMode('reality_sop')}
-            className={`px-3 py-2 font-bold border-b-2 transition-all flex items-center gap-1.5 shrink-0 ${
+            className={`px-3.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-2xs ${
               entryMode === 'reality_sop'
-                ? 'border-purple-500 text-purple-600 dark:text-purple-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'bg-purple-600 text-white font-black shadow-xs ring-1 ring-purple-500'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
           >
-            <HelpCircle className="w-3.5 h-3.5" />
+            <HelpCircle className="w-3.5 h-3.5 text-white" />
             <span>6. SOP Anti-Bias Lengkap</span>
           </button>
         </div>
@@ -554,22 +560,22 @@ export const KpiDataEntryModal: React.FC<KpiDataEntryModalProps> = ({
               </div>
 
               {/* Matrix Table with Authority Badges & Column Locking */}
-              <div className="overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
+              <div className="overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700 shadow-xs max-h-[55vh]">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-b border-slate-300 dark:border-slate-700">
-                      <th className="py-2.5 px-2 text-center w-10 font-bold border-r border-slate-300 dark:border-slate-700">NO</th>
-                      <th className="py-2.5 px-3 font-bold border-r border-slate-300 dark:border-slate-700">PARAMETER PENILAIAN</th>
-                      <th className="py-2.5 px-2 text-center w-36 font-bold border-r border-slate-300 dark:border-slate-700">OTORITAS PENILAI</th>
-                      <th className="py-2.5 px-1 text-center w-14 font-bold border-r border-slate-300 dark:border-slate-700 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300" title={`R1 (Atasan Langsung) - ${respondenList[0]}`}>
+                  <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 shadow-xs">
+                    <tr className="border-b border-slate-300 dark:border-slate-700">
+                      <th className="py-2.5 px-2 text-center w-10 font-bold border-r border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">NO</th>
+                      <th className="py-2.5 px-3 font-bold border-r border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">PARAMETER PENILAIAN</th>
+                      <th className="py-2.5 px-2 text-center w-36 font-bold border-r border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">OTORITAS PENILAI</th>
+                      <th className="py-2.5 px-1 text-center w-14 font-bold border-r border-slate-300 dark:border-slate-700 bg-amber-100/80 dark:bg-amber-950 text-amber-800 dark:text-amber-300" title={`R1 (Atasan Langsung) - ${respondenList[0]}`}>
                         R1 (Atasan)
                       </th>
-                      <th className="py-2.5 px-1 text-center w-14 font-bold border-r border-slate-300 dark:border-slate-700 text-indigo-600" title={`R2 (Rekan Kerja) - ${respondenList[1]}`}>R2</th>
-                      <th className="py-2.5 px-1 text-center w-14 font-bold border-r border-slate-300 dark:border-slate-700 text-emerald-600" title={`R3 (Rekan Kerja) - ${respondenList[2]}`}>R3</th>
-                      <th className="py-2.5 px-1 text-center w-14 font-bold border-r border-slate-300 dark:border-slate-700 text-purple-600" title={`R4 (Rekan Kerja) - ${respondenList[3]}`}>R4</th>
+                      <th className="py-2.5 px-1 text-center w-14 font-bold border-r border-slate-300 dark:border-slate-700 text-indigo-600 bg-slate-100 dark:bg-slate-800" title={`R2 (Rekan Kerja) - ${respondenList[1]}`}>R2</th>
+                      <th className="py-2.5 px-1 text-center w-14 font-bold border-r border-slate-300 dark:border-slate-700 text-emerald-600 bg-slate-100 dark:bg-slate-800" title={`R3 (Rekan Kerja) - ${respondenList[2]}`}>R3</th>
+                      <th className="py-2.5 px-1 text-center w-14 font-bold border-r border-slate-300 dark:border-slate-700 text-purple-600 bg-slate-100 dark:bg-slate-800" title={`R4 (Rekan Kerja) - ${respondenList[3]}`}>R4</th>
                       <th className="py-2.5 px-2 text-center w-16 font-bold border-r border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-700">TOTAL</th>
                       <th className="py-2.5 px-2 text-center w-14 font-bold border-r border-slate-300 dark:border-slate-700 bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300">AVG</th>
-                      <th className="py-2.5 px-2 text-center w-20 font-bold">KRITERIA</th>
+                      <th className="py-2.5 px-2 text-center w-20 font-bold bg-slate-100 dark:bg-slate-800">KRITERIA</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
