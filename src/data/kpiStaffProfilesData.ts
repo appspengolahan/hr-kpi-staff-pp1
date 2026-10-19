@@ -10,6 +10,28 @@ import {
 } from './kpi360TemplateData';
 
 const KPI_STORAGE_KEY_PREFIX = 'batu_karang_kpi_profile_v2_';
+export const KPI_ACTIVE_PERIOD_KEY = 'batu_karang_kpi_active_period';
+
+export const INDONESIAN_MONTH_NAMES = [
+  'JANUARI', 'FEBRUARI', 'MARET', 'APRIL', 'MEI', 'JUNI',
+  'JULI', 'AGUSTUS', 'SEPTEMBER', 'OKTOBER', 'NOVEMBER', 'DESEMBER'
+] as const;
+
+export function getStoredActivePeriod(): string {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem(KPI_ACTIVE_PERIOD_KEY);
+    if (saved && saved.trim()) return saved.trim();
+  }
+  // Default dynamic period based on active date (e.g. OKTOBER 2026)
+  const now = new Date();
+  return `${INDONESIAN_MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+export function setStoredActivePeriod(period: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(KPI_ACTIVE_PERIOD_KEY, period.trim());
+  }
+}
 
 // Helper to determine criteria label from score
 export function getKriteriaFromScore(score: number): 'SANGAT KURANG' | 'KURANG' | 'CUKUP' | 'BAIK' | 'SANGAT BAIK' {
@@ -269,17 +291,21 @@ export function generateStaffBaselineProfile(
   staff: HrStaffRecord, 
   templateVersion: 'RECOMMENDED_16' | 'LEGACY_20' = 'RECOMMENDED_16'
 ): OfficialKpiProfile {
+  const activePeriod = getStoredActivePeriod();
+
   // If Adin Tri Wartono, return the master baseline
   if (staff.nip === 'BK-PP1-025') {
     if (templateVersion === 'LEGACY_20') {
       return {
         ...OFFICIAL_ADIN_KPI_DATA,
+        periodePenilaian: activePeriod,
         templateVersion: 'LEGACY_20',
         parameters: KPI_20_LEGACY_PARAMETERS
       };
     }
     return {
       ...OFFICIAL_ADIN_KPI_DATA,
+      periodePenilaian: activePeriod,
       templateVersion: 'RECOMMENDED_16',
       parameters: KPI_16_RECOMMENDED_PARAMETERS
     };
@@ -303,7 +329,7 @@ export function generateStaffBaselineProfile(
     nama: staff.nama.toUpperCase(),
     nip: staff.nip,
     jabatan: staff.jabatan.toUpperCase(),
-    periodePenilaian: 'JANUARI 2026',
+    periodePenilaian: activePeriod,
     level: staff.level,
     sekup: staff.sekup.toUpperCase(),
     templateVersion,
@@ -328,6 +354,10 @@ export function getStaffKpiProfile(
     const savedJson = localStorage.getItem(storageKey);
     if (savedJson) {
       const parsed: OfficialKpiProfile = JSON.parse(savedJson);
+      const activePeriod = getStoredActivePeriod();
+      if (activePeriod && activePeriod !== 'JANUARI 2026' && parsed.periodePenilaian === 'JANUARI 2026') {
+        parsed.periodePenilaian = activePeriod;
+      }
       // If a specific template was explicitly asked and differs from parsed, adapt
       if (requestedTemplate && parsed.templateVersion !== requestedTemplate) {
         const baseline = generateStaffBaselineProfile(staff, requestedTemplate);
