@@ -850,15 +850,20 @@ export function generateQualitativeSynthesis(profile: OfficialKpiProfile): Quali
     ? profile.responden[0].replace(/\s*\([^)]*\)/, '')
     : 'Atasan Langsung';
 
-  // Dynamic persona summary based on employee role and score profile
-  let personaSummary = '';
-  if (profile.nip === 'BK-PP1-025') {
-    personaSummary = `Sdr. ${profile.nama} memiliki profil kerja sebagai Pelaksana Teliti & Berdisiplin Absensi Sangat Tinggi (Skor Kedisiplinan: ${catScores['Kedisiplinan'] || '3.88'}/5.00). Karyawan sangat kuat pada rutinitas kedisiplinan dan kepatuhan K3, namun menunjukkan perlunya peningkatan pada aspek akurasi selisih timbangan (zero variance) dan kecepatan pemecahan kendala di bawah tekanan tinggi (Skor Kompetensi: ${catScores['Kompetensi'] || '3.50'}/5.00).`;
-  } else {
-    const topDomain = Object.entries(catScores).sort((a, b) => b[1] - a[1])[0];
-    const lowDomain = Object.entries(catScores).sort((a, b) => a[1] - b[1])[0];
-    personaSummary = `Sdr. ${profile.nama} (${profile.jabatan}) menunjukkan profil kerja yang dominan pada domain ${topDomain?.[0]} (Skor: ${topDomain?.[1]}/5.00) dengan tingkat kehadiran ${profile.catatanPresensi.persentaseKehadiran}%. Kekuatan operasional terletak pada ${highest[0]?.name || 'tanggung jawab tugas'}, sementara ruang akselerasi performa berada pada domain ${lowDomain?.[0]} khususnya terkait ${lowest[0]?.name || 'pengembangan kompetensi'}.`;
-  }
+  // Helper to extract exact BARS description for the specific score
+  const getBarsForScore = (param: Kpi360Parameter, score: number): string => {
+    if (score >= 4.1) return param.barsDescription.level5;
+    if (score >= 3.1) return param.barsDescription.level4;
+    if (score >= 2.1) return param.barsDescription.level3;
+    if (score >= 1.1) return param.barsDescription.level2;
+    return param.barsDescription.level1;
+  };
+
+  // Dynamic persona summary based on real-time calculated scores
+  const topDomain = Object.entries(catScores).sort((a, b) => b[1] - a[1])[0];
+  const lowDomain = Object.entries(catScores).sort((a, b) => a[1] - b[1])[0];
+  
+  const personaSummary = `Sdr. ${profile.nama} (${profile.jabatan}) menunjukkan profil kerja dengan capaian tertinggi pada domain ${topDomain?.[0]} (Skor: ${topDomain?.[1]?.toFixed(2)}/5.00) dan tingkat kehadiran ${profile.catatanPresensi.persentaseKehadiran}%. Kekuatan operasional paling menonjol tercatat pada parameter "${highest[0]?.name}" (Skor: ${highest[0]?.avgScore.toFixed(2)}). Sementara itu, area percepatan pembenahan difokuskan pada domain ${lowDomain?.[0]} (Skor: ${lowDomain?.[1]?.toFixed(2)}), khususnya pada aspek "${lowest[0]?.name}" (Skor: ${lowest[0]?.avgScore.toFixed(2)}).`;
 
   return {
     personaSummary,
@@ -866,13 +871,13 @@ export function generateQualitativeSynthesis(profile: OfficialKpiProfile): Quali
     topStrengths: highest.map(p => ({
       title: `${p.name} (${p.category})`,
       score: p.avgScore,
-      qualitativeReason: p.barsDescription.level4
+      qualitativeReason: getBarsForScore(p, p.avgScore)
     })),
 
     developmentAreas: lowest.map(p => ({
       title: `${p.name} (${p.category})`,
       score: p.avgScore,
-      qualitativeReason: p.barsDescription.level3
+      qualitativeReason: getBarsForScore(p, p.avgScore)
     })),
 
     discrepancyAlert: {

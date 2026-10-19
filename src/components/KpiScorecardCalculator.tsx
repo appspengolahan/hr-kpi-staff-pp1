@@ -1422,31 +1422,47 @@ export const KpiScorecardCalculator: React.FC = () => {
                       3. Bottom: Sikap (Avg: 3.55) -> y = 130 + (3.55/5)*90 = 130 + 63.9 = 193.9 -> (140, 194)
                       4. Left: Kompetensi (Avg: 3.44) -> x = 140 - (3.44/5)*90 = 140 - 61.92 = 78.08 -> (78, 130)
                     */}
-                    <polygon
-                      points="140,60 205,130 140,194 78,130"
-                      className="fill-indigo-500/25 stroke-indigo-600 dark:fill-indigo-500/35 dark:stroke-indigo-400 transition-all duration-500"
-                      strokeWidth="2.5"
-                    />
+                    {(() => {
+                      const kedisiplinan = domainAverages.find(d => d.category === 'Kedisiplinan')?.avg || 3.5;
+                      const tanggungjawab = domainAverages.find(d => d.category === 'Tanggungjawab')?.avg || 3.5;
+                      const sikap = domainAverages.find(d => d.category === 'Sikap')?.avg || 3.5;
+                      const kompetensi = domainAverages.find(d => d.category === 'Kompetensi')?.avg || 3.5;
 
-                    {/* Points on radar */}
-                    <circle cx="140" cy="60" r="4.5" className="fill-amber-500 stroke-white stroke-2" />
-                    <circle cx="205" cy="130" r="4.5" className="fill-amber-500 stroke-white stroke-2" />
-                    <circle cx="140" cy="194" r="4.5" className="fill-amber-500 stroke-white stroke-2" />
-                    <circle cx="78" cy="130" r="4.5" className="fill-amber-500 stroke-white stroke-2" />
+                      const topY = Number((130 - (kedisiplinan / 5) * 85).toFixed(1));
+                      const rightX = Number((140 + (tanggungjawab / 5) * 85).toFixed(1));
+                      const bottomY = Number((130 + (sikap / 5) * 85).toFixed(1));
+                      const leftX = Number((140 - (kompetensi / 5) * 85).toFixed(1));
 
-                    {/* Labels */}
-                    <text x="140" y="25" textAnchor="middle" className="text-[10px] font-bold fill-slate-800 dark:fill-slate-200">
-                      Kedisiplinan (3.88)
-                    </text>
-                    <text x="240" y="133" textAnchor="start" className="text-[10px] font-bold fill-slate-800 dark:fill-slate-200">
-                      Tanggungjawab (3.61)
-                    </text>
-                    <text x="140" y="240" textAnchor="middle" className="text-[10px] font-bold fill-slate-800 dark:fill-slate-200">
-                      Sikap (3.55)
-                    </text>
-                    <text x="40" y="133" textAnchor="end" className="text-[10px] font-bold fill-slate-800 dark:fill-slate-200">
-                      Kompetensi (3.44)
-                    </text>
+                      return (
+                        <>
+                          <polygon
+                            points={`140,${topY} ${rightX},130 140,${bottomY} ${leftX},130`}
+                            className="fill-indigo-500/25 stroke-indigo-600 dark:fill-indigo-500/35 dark:stroke-indigo-400 transition-all duration-500"
+                            strokeWidth="2.5"
+                          />
+
+                          {/* Points on radar */}
+                          <circle cx="140" cy={topY} r="4.5" className="fill-amber-500 stroke-white stroke-2" />
+                          <circle cx={rightX} cy="130" r="4.5" className="fill-amber-500 stroke-white stroke-2" />
+                          <circle cx="140" cy={bottomY} r="4.5" className="fill-amber-500 stroke-white stroke-2" />
+                          <circle cx={leftX} cy="130" r="4.5" className="fill-amber-500 stroke-white stroke-2" />
+
+                          {/* Labels */}
+                          <text x="140" y="25" textAnchor="middle" className="text-[10px] font-bold fill-slate-800 dark:fill-slate-200">
+                            Kedisiplinan ({kedisiplinan.toFixed(2)})
+                          </text>
+                          <text x="240" y="133" textAnchor="start" className="text-[10px] font-bold fill-slate-800 dark:fill-slate-200">
+                            Tanggungjawab ({tanggungjawab.toFixed(2)})
+                          </text>
+                          <text x="140" y="240" textAnchor="middle" className="text-[10px] font-bold fill-slate-800 dark:fill-slate-200">
+                            Sikap ({sikap.toFixed(2)})
+                          </text>
+                          <text x="40" y="133" textAnchor="end" className="text-[10px] font-bold fill-slate-800 dark:fill-slate-200">
+                            Kompetensi ({kompetensi.toFixed(2)})
+                          </text>
+                        </>
+                      );
+                    })()}
                   </svg>
                 </div>
 
