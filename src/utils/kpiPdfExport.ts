@@ -244,8 +244,7 @@ export function renderOfficialFormPage(doc: jsPDF, options: KpiPdfExportOptions,
   doc.text('CATATAN PRESENSI RIIL OPERASIONAL', 18, y + 5);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(71, 85, 105);
-  doc.text(`Tingkat Kehadiran: ${profile.catatanPresensi.persentaseKehadiran}% (${profile.catatanPresensi.periode})`, 18, y + 10);
+  doc.text(`Tingkat Kehadiran: ${profile.catatanPresensi.persentaseKehadiran}% (${profile.catatanPresensi.periode || profile.periodePenilaian})`, 18, y + 10);
   doc.text(`Alpha: ${profile.catatanPresensi.alpha} hari  |  Ijin: ±${profile.catatanPresensi.ijinMenit} menit`, 18, y + 14.5);
   doc.text(`Sakit: ${profile.catatanPresensi.sakit} hari  |  Pulang Awal: ±${profile.catatanPresensi.pulangAwalMenit} menit`, 18, y + 19);
 
@@ -403,36 +402,47 @@ export function renderQualitativePage(doc: jsPDF, options: KpiPdfExportOptions, 
   doc.text('III. CATATAN KUALITATIF REKAN KERJA (PEER REVIEW 360°)', 14, y);
   y += 4;
 
-  const peerColWidth = (pageWidth - 28 - 4) / 2;
-  profile.peerFeedbacks.slice(0, 2).forEach((fb, i) => {
-    const peerX = 14 + i * (peerColWidth + 4);
-    doc.setFillColor(255, 255, 255);
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(peerX, y, peerColWidth, 31, 1.5, 1.5, 'FD');
+  const validFeedbacks = profile.peerFeedbacks.filter(fb => fb.respondentName && fb.respondentName.trim().length > 0);
+  if (validFeedbacks.length > 0) {
+    const peerColWidth = (pageWidth - 28 - 4) / 2;
+    validFeedbacks.slice(0, 2).forEach((fb, i) => {
+      const peerX = 14 + i * (peerColWidth + 4);
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(peerX, y, peerColWidth, 31, 1.5, 1.5, 'FD');
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.2);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`${fb.respondentName} (${fb.roleInFactory})`, peerX + 4, y + 5);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.2);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${fb.respondentName} (${fb.roleInFactory})`, peerX + 4, y + 5);
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-    doc.setTextColor(16, 149, 102); // emerald-600
-    const pos = doc.splitTextToSize(`(+) Kekuatan: ${fb.positiveFeedback}`, peerColWidth - 8);
-    doc.text(pos, peerX + 4, y + 9.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(16, 149, 102); // emerald-600
+      const pos = doc.splitTextToSize(`(+) Kekuatan: ${fb.positiveFeedback}`, peerColWidth - 8);
+      doc.text(pos, peerX + 4, y + 9.5);
 
-    doc.setTextColor(217, 119, 6); // amber-600
-    const imp = doc.splitTextToSize(`(-) Perlu Pembenahan: ${fb.improvementFeedback}`, peerColWidth - 8);
-    doc.text(imp, peerX + 4, y + 18);
+      doc.setTextColor(217, 119, 6); // amber-600
+      const imp = doc.splitTextToSize(`(-) Perlu Pembenahan: ${fb.improvementFeedback}`, peerColWidth - 8);
+      doc.text(imp, peerX + 4, y + 18);
 
-    if (fb.recommendation) {
-      doc.setTextColor(79, 70, 229); // indigo-600
-      const rec = doc.splitTextToSize(`Usulan: ${fb.recommendation}`, peerColWidth - 8);
-      doc.text(rec, peerX + 4, y + 26.5);
-    }
-  });
-
-  y += 35;
+      if (fb.recommendation) {
+        doc.setTextColor(79, 70, 229); // indigo-600
+        const rec = doc.splitTextToSize(`Usulan: ${fb.recommendation}`, peerColWidth - 8);
+        doc.text(rec, peerX + 4, y + 26.5);
+      }
+    });
+    y += 35;
+  } else {
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(14, y, pageWidth - 28, 12, 1.5, 1.5, 'FD');
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text('(Responden rekan kerja dan catatan kualitatif dikosongkan)', 18, y + 7.5);
+    y += 16;
+  }
 
   // Section 5: Rencana Aksi Pembinaan Operasional (Action Plan 30-60-90 Hari)
   doc.setFont('helvetica', 'bold');

@@ -93,15 +93,20 @@ function calculateParamScore(
 }
 
 // Generate realistic attendance data based on staff record
-function generateAttendance(staff: HrStaffRecord) {
+function generateAttendance(staff: HrStaffRecord, periodeText?: string) {
+  const activePeriod = periodeText || getStoredActivePeriod();
+
   if (staff.nip === 'BK-PP1-025') {
-    return OFFICIAL_ADIN_KPI_DATA.catatanPresensi;
+    return {
+      ...OFFICIAL_ADIN_KPI_DATA.catatanPresensi,
+      periode: activePeriod
+    };
   }
 
   if (staff.level.includes('25') || staff.level.includes('15')) {
     return {
       persentaseKehadiran: 100,
-      periode: 'Juli 2025 - Januari 2026',
+      periode: activePeriod,
       alpha: '-',
       ijinMenit: 0,
       sakit: '-',
@@ -111,9 +116,10 @@ function generateAttendance(staff: HrStaffRecord) {
   }
 
   if (staff.level.includes('9')) {
+    // Sesuai data HR Staff database riil periode Januari - Oktober: 98.99%
     return {
-      persentaseKehadiran: 99.65,
-      periode: 'Juli 2025 - Januari 2026',
+      persentaseKehadiran: 98.99,
+      periode: activePeriod,
       alpha: '-',
       ijinMenit: 60,
       sakit: '-',
@@ -125,7 +131,7 @@ function generateAttendance(staff: HrStaffRecord) {
   if (staff.status === 'TETAP') {
     return {
       persentaseKehadiran: 98.85,
-      periode: 'Juli 2025 - Januari 2026',
+      periode: activePeriod,
       alpha: '-',
       ijinMenit: 120,
       sakit: '1 Hari (Surat Dokter)',
@@ -139,7 +145,7 @@ function generateAttendance(staff: HrStaffRecord) {
   const chosen = attendanceValues[staff.id % attendanceValues.length];
   return {
     persentaseKehadiran: chosen,
-    periode: 'Juli 2025 - Januari 2026',
+    periode: activePeriod,
     alpha: '-',
     ijinMenit: 180,
     sakit: '-',
@@ -160,12 +166,13 @@ function generateSanctions(staff: HrStaffRecord): string[] {
   return [];
 }
 
-// Generate realistic 4 respondents for each staff member
+// Generate realistic 4 respondents for each staff member (Strictly NO self-evaluation, NO duplicates)
 function generateRespondents(staff: HrStaffRecord): string[] {
   if (staff.nip === 'BK-PP1-025') {
     return OFFICIAL_ADIN_KPI_DATA.responden;
   }
 
+  // Lalu Mahendra Ali Akbar (Manajer Operasional) - Evaluated by Direktur Operasional and Top Leads
   if (staff.nip === 'BK-PP1-001') {
     return [
       'Direktur Operasional PT Batu Karang (Atasan)',
@@ -175,53 +182,68 @@ function generateRespondents(staff: HrStaffRecord): string[] {
     ];
   }
 
-  // Default hierarchical respondents
+  // Default hierarchical supervisor
   let supervisor = 'Lalu Mahendra Ali Akbar (Manajer Operasional)';
   if (staff.sekup === 'Administrasi') {
-    if (staff.nip !== 'BK-PP1-003') supervisor = 'Agustin Wulandari (Kepala Administrasi 1)';
+    if (staff.nip !== 'BK-PP1-003') {
+      supervisor = 'Agustin Wulandari (Kepala Administrasi 1)';
+    }
   } else {
-    if (staff.nip !== 'BK-PP1-021') supervisor = 'Andhik Dharmabakti (Plt. Ka Pengolahan 2)';
+    if (staff.nip !== 'BK-PP1-021') {
+      supervisor = 'Andhik Dharmabakti (Plt. Ka Pengolahan 2)';
+    }
   }
 
-  // Find 3 peer colleagues
-  const peers = HR_STAFF_MASTER_DATA
-    .filter(s => s.nip !== staff.nip && s.nip !== 'BK-PP1-001' && s.sekup === staff.sekup)
-    .slice(0, 3)
-    .map((p, idx) => `${p.nama} (${idx === 0 ? 'Senior Partner' : 'Rekan Kerja'})`);
+  // Find 3 peer colleagues, strictly excluding the staff themselves and the supervisor
+  const candidatePeers = HR_STAFF_MASTER_DATA.filter(s => 
+    s.nip !== staff.nip && 
+    s.nip !== 'BK-PP1-001' && 
+    s.nama.toLowerCase() !== staff.nama.toLowerCase() &&
+    !supervisor.toLowerCase().includes(s.nama.toLowerCase())
+  );
 
-  while (peers.length < 3) {
-    peers.push('Rekan Divisi Terkait');
+  const scopePeers = candidatePeers.filter(s => s.sekup === staff.sekup);
+  const otherPeers = candidatePeers.filter(s => s.sekup !== staff.sekup);
+  const pool = [...scopePeers, ...otherPeers];
+
+  const chosenPeers: string[] = [];
+  for (let i = 0; i < pool.length && chosenPeers.length < 3; i++) {
+    const p = pool[i];
+    chosenPeers.push(`${p.nama} (${p.jabatan})`);
   }
 
-  return [supervisor, peers[0], peers[1], peers[2]];
+  while (chosenPeers.length < 3) {
+    chosenPeers.push(`Rekan Kerja Partner ${chosenPeers.length + 1}`);
+  }
+
+  return [supervisor, chosenPeers[0], chosenPeers[1], chosenPeers[2]];
 }
 
-// Generate realistic peer feedbacks for each staff member
+// Generate realistic peer feedbacks for each staff member (Strictly NO self-evaluation)
 function generatePeerFeedbacks(staff: HrStaffRecord): PeerFeedbackItem[] {
   if (staff.nip === 'BK-PP1-025') {
     return OFFICIAL_ADIN_KPI_DATA.peerFeedbacks;
   }
 
-  const isLeader = staff.level.includes('25') || staff.level.includes('15') || staff.level.includes('9');
-
-  if (isLeader) {
+  // Lalu Mahendra Ali Akbar (Manajer Operasional) - NEVER evaluates himself
+  if (staff.nip === 'BK-PP1-001') {
     return [
       {
         id: `peer-${staff.nip}-1`,
-        respondentName: 'LALU MAHENDRA ALI AKBAR',
+        respondentName: 'DIREKTUR OPERASIONAL PT BATU KARANG',
         relationType: 'LANGSUNG',
-        roleInFactory: 'Manajer Operasional Produksi I',
-        positiveFeedback: `Memiliki jiwa kepemimpinan operasional yang handal dan kepatuhan SOP yang konsisten dalam mengarahkan personil tim ${staff.jabatan}.`,
-        improvementFeedback: 'Perlu terus memperkuat koordinasi digital lintas seksi pengolahan tembakau & cengkeh agar alur BOS makin presisi.',
-        recommendation: 'Peningkatan supervisi preventif pada saat jam pergantian shift kerja.'
+        roleInFactory: 'Direktur Operasional (Atasan Langsung)',
+        positiveFeedback: 'Kepemimpinan operasional strategis dan pengawalan SOP lantai pabrik berjalan sangat konsisten.',
+        improvementFeedback: 'Perlu terus memperkuat kaderisasi mandor dan pemantauan sistem digital BOS terpadu.',
+        recommendation: 'Supervisi preventif berkala pada serah terima operasional lintas shift.'
       },
       {
         id: `peer-${staff.nip}-2`,
         respondentName: 'AGUSTIN WULANDARI',
         relationType: 'LANGSUNG',
         roleInFactory: 'Kepala Administrasi 1',
-        positiveFeedback: 'Komunikasi administratif sangat jelas, tertib pengarsipan, dan cepat dalam verifikasi buku laporan bulanan.',
-        improvementFeedback: 'Pertahankan stabilitas koordinasi saat volume order pabrik melonjak.',
+        positiveFeedback: 'Koordinasi manajerial sangat terarah, tertib dalam verifikasi rekapitulasi data bulanan divisi.',
+        improvementFeedback: 'Pertahankan stabilitas komunikasi saat volume permintaan pabrik meningkat.',
         recommendation: 'Standarisasi checklist serah terima dokumen mingguan.'
       },
       {
@@ -229,7 +251,7 @@ function generatePeerFeedbacks(staff: HrStaffRecord): PeerFeedbackItem[] {
         respondentName: 'ANDHIK DHARMABAKTI',
         relationType: 'TIDAK_LANGSUNG',
         roleInFactory: 'Plt. Kepala Pengolahan 2',
-        positiveFeedback: 'Rekan kerja tangguh yang responsif ketika terjadi kendala teknis penimbangan maupun pemrosesan bahan.',
+        positiveFeedback: 'Dukungan cepat terhadap kendala teknis penimbangan maupun pemrosesan bahan baku di lini proses.',
         improvementFeedback: 'Perlu sosialisasi berkala SOP keselamatan kerja (K3) kepada operator dan helper baru.',
         recommendation: 'Pelatihan singkat K3 rutin 15 menit per awal bulan.'
       },
@@ -245,13 +267,62 @@ function generatePeerFeedbacks(staff: HrStaffRecord): PeerFeedbackItem[] {
     ];
   }
 
+  const isLeader = staff.level.includes('25') || staff.level.includes('15') || staff.level.includes('9');
+
+  if (isLeader) {
+    const r2Name = staff.nip === 'BK-PP1-003' ? 'ANDHIK DHARMABAKTI' : 'AGUSTIN WULANDARI';
+    const r2Role = staff.nip === 'BK-PP1-003' ? 'Plt. Kepala Pengolahan 2' : 'Kepala Administrasi 1';
+
+    const r3Name = staff.nip === 'BK-PP1-021' ? 'YULIA WARDHANA' : 'ANDHIK DHARMABAKTI';
+    const r3Role = staff.nip === 'BK-PP1-021' ? 'Plt. Ka Gudang Persediaan 1' : 'Plt. Kepala Pengolahan 2';
+
+    return [
+      {
+        id: `peer-${staff.nip}-1`,
+        respondentName: 'LALU MAHENDRA ALI AKBAR',
+        relationType: 'LANGSUNG',
+        roleInFactory: 'Manajer Operasional Produksi I (Atasan)',
+        positiveFeedback: `Memiliki jiwa kepemimpinan operasional yang handal dan kepatuhan SOP yang konsisten dalam mengarahkan personil tim ${staff.jabatan}.`,
+        improvementFeedback: 'Perlu terus memperkuat koordinasi digital lintas seksi pengolahan tembakau & cengkeh agar alur BOS makin presisi.',
+        recommendation: 'Peningkatan supervisi preventif pada saat jam pergantian shift kerja.'
+      },
+      {
+        id: `peer-${staff.nip}-2`,
+        respondentName: r2Name,
+        relationType: 'LANGSUNG',
+        roleInFactory: r2Role,
+        positiveFeedback: 'Komunikasi administratif sangat jelas, tertib pengarsipan, dan cepat dalam verifikasi buku laporan bulanan.',
+        improvementFeedback: 'Pertahankan stabilitas koordinasi saat volume order pabrik melonjak.',
+        recommendation: 'Standarisasi checklist serah terima dokumen mingguan.'
+      },
+      {
+        id: `peer-${staff.nip}-3`,
+        respondentName: r3Name,
+        relationType: 'TIDAK_LANGSUNG',
+        roleInFactory: r3Role,
+        positiveFeedback: 'Rekan kerja tangguh yang responsif ketika terjadi kendala teknis penimbangan maupun pemrosesan bahan.',
+        improvementFeedback: 'Perlu sosialisasi berkala SOP keselamatan kerja (K3) kepada operator dan helper baru.',
+        recommendation: 'Pelatihan singkat K3 rutin 15 menit per awal bulan.'
+      },
+      {
+        id: `peer-${staff.nip}-4`,
+        respondentName: staff.nip === 'BK-PP1-007' ? 'SURYA NING SASI' : 'YULIA WARDHANA',
+        relationType: 'TIDAK_LANGSUNG',
+        roleInFactory: staff.nip === 'BK-PP1-007' ? 'Mandor Proses Blend' : 'Plt. Ka Gudang Persediaan 1',
+        positiveFeedback: 'Sangat kooperatif dalam sinkronisasi kartu stok gudang dan mutasi bahan baku.',
+        improvementFeedback: 'Tingkatkan akurasi perkiraan estimasi kebutuhan bahan sebelum jam proses.',
+        recommendation: 'Integrasi sistem rekap stok digital real-time.'
+      }
+    ];
+  }
+
   // Operator / Pelaksana / Staff
   return [
     {
       id: `peer-${staff.nip}-1`,
-      respondentName: 'ANDHIK DHARMABAKTI',
+      respondentName: staff.sekup === 'Administrasi' ? 'AGUSTIN WULANDARI' : 'ANDHIK DHARMABAKTI',
       relationType: 'LANGSUNG',
-      roleInFactory: 'Plt. Kepala Pengolahan 2 (Atasan)',
+      roleInFactory: staff.sekup === 'Administrasi' ? 'Kepala Administrasi 1 (Atasan)' : 'Plt. Kepala Pengolahan 2 (Atasan)',
       positiveFeedback: `Menunjukkan dedikasi dan kedisiplinan kerja yang baik dalam mengemban tugas sebagai ${staff.jabatan}. Selalu mematuhi jam shift.`,
       improvementFeedback: 'Tingkatkan ketelitian verifikasi data fisik agar tidak ada selisih catatan kerja dengan hasil akhir.',
       recommendation: 'Lakukan pemeriksaan silang (cross-check) sebelum menyerahkan hasil ke mandor.'
@@ -295,10 +366,15 @@ export function generateStaffBaselineProfile(
 
   // If Adin Tri Wartono, return the master baseline
   if (staff.nip === 'BK-PP1-025') {
+    const baseAdinPresensi = {
+      ...OFFICIAL_ADIN_KPI_DATA.catatanPresensi,
+      periode: activePeriod
+    };
     if (templateVersion === 'LEGACY_20') {
       return {
         ...OFFICIAL_ADIN_KPI_DATA,
         periodePenilaian: activePeriod,
+        catatanPresensi: baseAdinPresensi,
         templateVersion: 'LEGACY_20',
         parameters: KPI_20_LEGACY_PARAMETERS
       };
@@ -306,6 +382,7 @@ export function generateStaffBaselineProfile(
     return {
       ...OFFICIAL_ADIN_KPI_DATA,
       periodePenilaian: activePeriod,
+      catatanPresensi: baseAdinPresensi,
       templateVersion: 'RECOMMENDED_16',
       parameters: KPI_16_RECOMMENDED_PARAMETERS
     };
@@ -334,7 +411,7 @@ export function generateStaffBaselineProfile(
     sekup: staff.sekup.toUpperCase(),
     templateVersion,
     sanksiAdministratif: generateSanctions(staff),
-    catatanPresensi: generateAttendance(staff),
+    catatanPresensi: generateAttendance(staff, activePeriod),
     responden: generateRespondents(staff),
     parameters: customizedParams,
     peerFeedbacks: generatePeerFeedbacks(staff)
@@ -355,9 +432,39 @@ export function getStaffKpiProfile(
     if (savedJson) {
       const parsed: OfficialKpiProfile = JSON.parse(savedJson);
       const activePeriod = getStoredActivePeriod();
-      if (activePeriod && activePeriod !== 'JANUARI 2026' && parsed.periodePenilaian === 'JANUARI 2026') {
+      if (activePeriod && (parsed.periodePenilaian === 'JANUARI 2026' || !parsed.periodePenilaian)) {
         parsed.periodePenilaian = activePeriod;
       }
+
+      // Sync attendance period with active evaluation period
+      if (parsed.catatanPresensi) {
+        if (!parsed.catatanPresensi.periode || parsed.catatanPresensi.periode.includes('Juli 2025 - Januari 2026') || parsed.catatanPresensi.periode !== parsed.periodePenilaian) {
+          parsed.catatanPresensi.periode = parsed.periodePenilaian || activePeriod;
+        }
+        // Fix attendance percentage discrepancy: 99.65 -> 98.99 from staff database
+        if (parsed.catatanPresensi.persentaseKehadiran === 99.65) {
+          parsed.catatanPresensi.persentaseKehadiran = 98.99;
+        }
+      }
+
+      // If user emptied respondents (all entries are blank or array is empty)
+      const hasOnlyEmptyRespondents = !parsed.responden || parsed.responden.length === 0 || parsed.responden.every(r => !r || !r.trim());
+      if (hasOnlyEmptyRespondents) {
+        // Clear respondent names from peerFeedbacks so ghost/dummy records are not displayed
+        if (parsed.peerFeedbacks) {
+          parsed.peerFeedbacks = parsed.peerFeedbacks.map(fb => ({
+            ...fb,
+            respondentName: ''
+          }));
+        }
+      }
+
+      // Prevent Lalu Mahendra evaluating himself
+      if (staff.nip === 'BK-PP1-001' && parsed.peerFeedbacks?.[0]?.respondentName?.includes('LALU MAHENDRA')) {
+        parsed.peerFeedbacks[0].respondentName = 'DIREKTUR OPERASIONAL PT BATU KARANG';
+        parsed.peerFeedbacks[0].roleInFactory = 'Direktur Operasional (Atasan Langsung)';
+      }
+
       // If a specific template was explicitly asked and differs from parsed, adapt
       if (requestedTemplate && parsed.templateVersion !== requestedTemplate) {
         const baseline = generateStaffBaselineProfile(staff, requestedTemplate);

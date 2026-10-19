@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Check, AlertTriangle, ShieldAlert, Sparkles, UserCheck, 
   HelpCircle, Eye, RefreshCw, BookmarkCheck, Crown, Lock, Users,
-  Sliders, ShieldCheck, ChevronDown, CheckCircle2
+  Sliders, ShieldCheck, ChevronDown, CheckCircle2, Trash2, RotateCcw
 } from 'lucide-react';
 import { 
   OfficialKpiProfile, 
@@ -10,6 +10,7 @@ import {
   PeerFeedbackItem,
   EvaluationAuthority
 } from '../data/kpi360TemplateData';
+import { HR_STAFF_MASTER_DATA } from '../data/hrStaffMasterData';
 
 interface KpiDataEntryModalProps {
   isOpen: boolean;
@@ -327,6 +328,68 @@ export const KpiDataEntryModal: React.FC<KpiDataEntryModalProps> = ({
     }));
   };
 
+  // Handle respondent name change with automatic synchronization to peer feedbacks
+  const handleUpdateRespondent = (index: number, newName: string) => {
+    const newList = [...respondenList];
+    newList[index] = newName;
+    setRespondenList(newList);
+
+    // Sync to peerFeedbacks so respondentName matches immediately
+    setPeerFeedbacks(prev => {
+      const updated = [...prev];
+      if (updated[index]) {
+        updated[index] = {
+          ...updated[index],
+          respondentName: newName.trim()
+        };
+      }
+      return updated;
+    });
+  };
+
+  // Clear all respondents and their qualitative feedback notes
+  const handleClearAllRespondents = () => {
+    setRespondenList(['', '', '', '']);
+    setPeerFeedbacks(prev => prev.map(fb => ({
+      ...fb,
+      respondentName: '',
+      positiveFeedback: '',
+      improvementFeedback: '',
+      recommendation: ''
+    })));
+  };
+
+  // Reset to clean standard respondents (strictly no self-evaluation)
+  const handleResetToStandardRespondents = () => {
+    const staff = HR_STAFF_MASTER_DATA.find(s => s.nip === currentProfile.nip);
+    if (!staff) return;
+
+    let r1 = 'Lalu Mahendra Ali Akbar (Manajer Operasional)';
+    if (staff.nip === 'BK-PP1-001') {
+      r1 = 'Direktur Operasional PT Batu Karang (Atasan)';
+    } else if (staff.sekup === 'Administrasi' && staff.nip !== 'BK-PP1-003') {
+      r1 = 'Agustin Wulandari (Kepala Administrasi 1)';
+    } else if (staff.sekup === 'Operasional' && staff.nip !== 'BK-PP1-021') {
+      r1 = 'Andhik Dharmabakti (Plt. Ka Pengolahan 2)';
+    }
+
+    const peers = HR_STAFF_MASTER_DATA
+      .filter(s => s.nip !== staff.nip && s.nip !== 'BK-PP1-001' && !r1.toLowerCase().includes(s.nama.toLowerCase()))
+      .slice(0, 3)
+      .map(p => `${p.nama} (${p.jabatan})`);
+
+    while (peers.length < 3) {
+      peers.push(`Rekan Kerja Partner ${peers.length + 1}`);
+    }
+
+    const stdList = [r1, peers[0], peers[1], peers[2]];
+    setRespondenList(stdList);
+    setPeerFeedbacks(prev => prev.map((fb, idx) => ({
+      ...fb,
+      respondentName: stdList[idx] || ''
+    })));
+  };
+
   // Save changes and broadcast
   const handleSaveAll = () => {
     const sanksiArray = sanksiText
@@ -334,17 +397,30 @@ export const KpiDataEntryModal: React.FC<KpiDataEntryModalProps> = ({
       .map(s => s.trim())
       .filter(s => s.length > 0);
 
+    // If all respondents are blank, ensure all peerFeedbacks have empty respondentName
+    const allRespondenEmpty = respondenList.every(r => !r || !r.trim());
+    const finalPeerFeedbacks = peerFeedbacks.map((fb, idx) => {
+      const respName = respondenList[idx] !== undefined ? respondenList[idx].trim() : '';
+      return {
+        ...fb,
+        respondentName: allRespondenEmpty ? '' : (respName || fb.respondentName)
+      };
+    });
+
     const updated: OfficialKpiProfile = {
       ...currentProfile,
       responden: respondenList,
-      catatanPresensi: presensi,
+      catatanPresensi: {
+        ...presensi,
+        periode: presensi.periode || currentProfile.periodePenilaian
+      },
       sanksiAdministratif: sanksiArray,
       parameters: workingParams.map(wp => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { rScores, ...cleanParam } = wp;
         return cleanParam;
       }),
-      peerFeedbacks
+      peerFeedbacks: finalPeerFeedbacks
     };
 
     onSaveProfile(updated);
@@ -504,15 +580,40 @@ export const KpiDataEntryModal: React.FC<KpiDataEntryModalProps> = ({
               </div>
 
               {/* Responden Configuration Row */}
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase">
-                    Struktur 4 Responden Penilai:
-                  </span>
-                  <span className="text-[10px] text-slate-400">
-                    R1 memiliki wewenang veto untuk parameter Mutlak Atasan
-                  </span>
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700/80 pb-2">
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider block">
+                      Struktur 4 Responden Penilai:
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      R1 memiliki wewenang veto untuk parameter Mutlak Atasan. Nama responden otomatis sinkron dengan catatan kualitatif.
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleClearAllRespondents}
+                      className="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 text-[10.5px] font-bold flex items-center gap-1 transition-all"
+                      title="Hapus seluruh responden dan kosongkan catatan kualitatif (hapus dummy)"
+                    >
+                      <Trash2 className="w-3 h-3 text-red-600" />
+                      <span>Kosongkan Responden</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleResetToStandardRespondents}
+                      className="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-[10.5px] font-bold flex items-center gap-1 transition-all"
+                      title="Isi ulang otomatis dengan atasan dan rekan kerja hirarkis tanpa evaluasi diri"
+                    >
+                      <RotateCcw className="w-3 h-3 text-slate-500" />
+                      <span>Muat Standar Pabrik</span>
+                    </button>
+                  </div>
                 </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                   {respondenList.map((resp, i) => (
                     <div key={i} className={`p-2 rounded-lg border ${
@@ -529,11 +630,8 @@ export const KpiDataEntryModal: React.FC<KpiDataEntryModalProps> = ({
                       <input
                         type="text"
                         value={resp}
-                        onChange={(e) => {
-                          const newList = [...respondenList];
-                          newList[i] = e.target.value;
-                          setRespondenList(newList);
-                        }}
+                        onChange={(e) => handleUpdateRespondent(i, e.target.value)}
+                        placeholder={`Ketik nama Responden R${i + 1}...`}
                         className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-100 focus:ring-1 focus:ring-amber-500"
                       />
                     </div>
@@ -877,10 +975,32 @@ export const KpiDataEntryModal: React.FC<KpiDataEntryModalProps> = ({
               ========================================================================= */}
           {entryMode === 'peer_sbi' && (
             <div className="space-y-4">
-              <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800/80 text-xs text-emerald-900 dark:text-emerald-200 flex items-start gap-2.5">
-                <BookmarkCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <strong>Formula SBI (Situation - Behavior - Impact):</strong> Umpan balik kualitatif tidak boleh klise seperti <em>"Kerjaannya bagus"</em>. Tuliskan <strong>Situasi</strong> (kapan/di mana), <strong>Perilaku</strong> (apa tindakan spesifik karyawan), dan <strong>Dampak</strong> (pengaruhnya terhadap operasional pabrik/target divisi).
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800/80 text-xs text-emerald-900 dark:text-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5">
+                  <BookmarkCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong>Formula SBI (Situation - Behavior - Impact):</strong> Umpan balik kualitatif tidak boleh klise seperti <em>"Kerjaannya bagus"</em>. Tuliskan <strong>Situasi</strong>, <strong>Perilaku</strong>, dan <strong>Dampak</strong> terhadap pabrik.
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleClearAllRespondents}
+                    className="px-2.5 py-1 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-950 dark:hover:bg-red-900 text-red-700 dark:text-red-300 text-[10.5px] font-bold flex items-center gap-1 transition-all border border-red-300 dark:border-red-800"
+                    title="Kosongkan nama responden dan catatan kualitatif"
+                  >
+                    <Trash2 className="w-3 h-3 text-red-600" />
+                    <span>Kosongkan Responden</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetToStandardRespondents}
+                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10.5px] font-bold flex items-center gap-1 transition-all border border-slate-300 dark:border-slate-700"
+                  >
+                    <RotateCcw className="w-3 h-3 text-slate-500" />
+                    <span>Muat Standar</span>
+                  </button>
                 </div>
               </div>
 
@@ -900,9 +1020,12 @@ export const KpiDataEntryModal: React.FC<KpiDataEntryModalProps> = ({
                               const newFbs = [...peerFeedbacks];
                               newFbs[idx].respondentName = e.target.value;
                               setPeerFeedbacks(newFbs);
+                              const newRespList = [...respondenList];
+                              newRespList[idx] = e.target.value;
+                              setRespondenList(newRespList);
                             }}
                             className="font-bold text-slate-900 dark:text-white text-xs bg-transparent border-b border-slate-300 dark:border-slate-600 focus:outline-hidden"
-                            placeholder="Nama Responden"
+                            placeholder="Nama Responden (atau kosongkan)"
                           />
                           <span className="text-[10px] text-slate-400 block">{fb.roleInFactory}</span>
                         </div>
@@ -996,15 +1119,30 @@ export const KpiDataEntryModal: React.FC<KpiDataEntryModalProps> = ({
 
               {/* Presensi Grid */}
               <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
-                <h4 className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
-                  Catatan Presensi Periode Penilaian (Fingerprint / HRIS)
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-200 dark:border-slate-700 pb-2">
+                  <h4 className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
+                    Catatan Presensi Periode Penilaian (Fingerprint / HRIS)
+                  </h4>
+                  <span className="text-[10px] text-slate-400">
+                    Otomatis sinkron dengan kartu catatan presensi di Formulir Resmi
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2 text-xs">
+                  <div className="col-span-2 sm:col-span-3 md:col-span-1">
+                    <label className="text-[10px] text-slate-400 block font-medium">Periode Presensi</label>
+                    <input
+                      type="text"
+                      value={presensi.periode || currentProfile.periodePenilaian}
+                      onChange={(e) => setPresensi({ ...presensi, periode: e.target.value })}
+                      className="w-full py-1.5 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono font-bold text-slate-900 dark:text-white uppercase text-[11px]"
+                      placeholder="JANUARI - OKTOBER"
+                    />
+                  </div>
                   <div>
                     <label className="text-[10px] text-slate-400 block font-medium">Kehadiran (%)</label>
                     <input
                       type="number"
-                      step={0.1}
+                      step={0.01}
                       value={presensi.persentaseKehadiran}
                       onChange={(e) => setPresensi({ ...presensi, persentaseKehadiran: parseFloat(e.target.value) || 0 })}
                       className="w-full py-1.5 px-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono font-bold text-slate-900 dark:text-white"

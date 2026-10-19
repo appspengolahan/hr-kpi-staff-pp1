@@ -124,7 +124,11 @@ export const KpiScorecardCalculator: React.FC = () => {
     setStoredActivePeriod(cleanPeriod);
     const updated: OfficialKpiProfile = {
       ...currentProfile,
-      periodePenilaian: cleanPeriod
+      periodePenilaian: cleanPeriod,
+      catatanPresensi: {
+        ...currentProfile.catatanPresensi,
+        periode: cleanPeriod
+      }
     };
     setCurrentProfile(updated);
     saveStaffKpiProfile(updated);
@@ -1100,7 +1104,7 @@ export const KpiScorecardCalculator: React.FC = () => {
                     </span>
                   </div>
                   <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                    Periode: {currentProfile.catatanPresensi.periode}
+                    Periode: {currentProfile.catatanPresensi.periode || currentProfile.periodePenilaian}
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 font-mono text-[11px] pt-1">
                     <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
@@ -1129,14 +1133,23 @@ export const KpiScorecardCalculator: React.FC = () => {
                     <Users className="w-3.5 h-3.5 text-slate-500" />
                   </h5>
                   <div className="space-y-1">
-                    {currentProfile.responden.map((resp, i) => (
-                      <div key={i} className="flex items-center gap-2 text-[11px] text-slate-700 dark:text-slate-300">
-                        <span className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold flex items-center justify-center shrink-0">
-                          {i + 1}
-                        </span>
-                        <span className="font-medium">{resp}</span>
+                    {currentProfile.responden && currentProfile.responden.some(r => r && r.trim().length > 0) ? (
+                      currentProfile.responden.map((resp, i) => {
+                        if (!resp || !resp.trim()) return null;
+                        return (
+                          <div key={i} className="flex items-center gap-2 text-[11px] text-slate-700 dark:text-slate-300">
+                            <span className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold flex items-center justify-center shrink-0">
+                              {i + 1}
+                            </span>
+                            <span className="font-medium">{resp}</span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 italic">
+                        Responden dikosongkan (Belum ada responden ditentukan).
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               </div>
@@ -1165,74 +1178,114 @@ export const KpiScorecardCalculator: React.FC = () => {
                 </button>
               </div>
 
-              {/* Grid 2 Cols: Hubungan Kerja Langsung & Tidak Langsung */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                
-                {/* A. Hubungan Kerja Langsung */}
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
-                  <div className="font-bold text-slate-900 dark:text-white uppercase text-[11px] border-b border-slate-200 dark:border-slate-700 pb-1.5 flex items-center justify-between">
-                    <span>A. Hubungan Kerja Langsung</span>
-                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold font-mono">2 Responden</span>
-                  </div>
+              {/* Check if any valid peer feedback exists */}
+              {(() => {
+                const directFeedbacks = (currentProfile.peerFeedbacks || []).filter(
+                  f => f.relationType === 'LANGSUNG' && f.respondentName && f.respondentName.trim().length > 0
+                );
+                const indirectFeedbacks = (currentProfile.peerFeedbacks || []).filter(
+                  f => f.relationType === 'TIDAK_LANGSUNG' && f.respondentName && f.respondentName.trim().length > 0
+                );
+                const totalValidFeedbacks = directFeedbacks.length + indirectFeedbacks.length;
 
-                  {currentProfile.peerFeedbacks.filter(f => f.relationType === 'LANGSUNG').map(fb => (
-                    <div key={fb.id} className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-1.5">
-                      <div className="flex items-center justify-between font-bold text-slate-900 dark:text-slate-100 text-[11px]">
-                        <span>{fb.respondentName}</span>
-                        <span className="text-[10px] text-slate-400 font-normal">{fb.roleInFactory}</span>
-                      </div>
-                      <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
-                        <div className="flex items-start gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                          <span><strong>Kekuatan:</strong> {fb.positiveFeedback}</span>
-                        </div>
-                        <div className="flex items-start gap-1.5">
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                          <span><strong>Perlu Pembenahan:</strong> {fb.improvementFeedback}</span>
-                        </div>
-                        {fb.recommendation && (
-                          <div className="text-[10px] text-indigo-600 dark:text-indigo-400 italic pt-1 border-t border-slate-100 dark:border-slate-800">
-                            Usulan: {fb.recommendation}
-                          </div>
-                        )}
-                      </div>
+                if (totalValidFeedbacks === 0) {
+                  return (
+                    <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 text-center space-y-2">
+                      <Users className="w-8 h-8 text-slate-400 mx-auto" />
+                      <h5 className="font-bold text-slate-700 dark:text-slate-300 text-xs">
+                        Responden Penilai Dikosongkan
+                      </h5>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                        Seluruh responden rekan kerja telah dikosongkan. Catatan kualitatif dummy tidak ditampilkan. Anda dapat menambahkan kembali responden melalui menu <strong>"Entri / Kalibrasi Data KPI"</strong>.
+                      </p>
                     </div>
-                  ))}
-                </div>
+                  );
+                }
 
-                {/* B. Hubungan Kerja Tidak Langsung */}
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
-                  <div className="font-bold text-slate-900 dark:text-white uppercase text-[11px] border-b border-slate-200 dark:border-slate-700 pb-1.5 flex items-center justify-between">
-                    <span>B. Hubungan Kerja Tidak Langsung</span>
-                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold font-mono">2 Responden</span>
-                  </div>
-
-                  {currentProfile.peerFeedbacks.filter(f => f.relationType === 'TIDAK_LANGSUNG').map(fb => (
-                    <div key={fb.id} className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-1.5">
-                      <div className="flex items-center justify-between font-bold text-slate-900 dark:text-slate-100 text-[11px]">
-                        <span>{fb.respondentName}</span>
-                        <span className="text-[10px] text-slate-400 font-normal">{fb.roleInFactory}</span>
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    {/* A. Hubungan Kerja Langsung */}
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                      <div className="font-bold text-slate-900 dark:text-white uppercase text-[11px] border-b border-slate-200 dark:border-slate-700 pb-1.5 flex items-center justify-between">
+                        <span>A. Hubungan Kerja Langsung</span>
+                        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold font-mono">
+                          {directFeedbacks.length} Responden
+                        </span>
                       </div>
-                      <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
-                        <div className="flex items-start gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                          <span><strong>Kekuatan:</strong> {fb.positiveFeedback}</span>
-                        </div>
-                        <div className="flex items-start gap-1.5">
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                          <span><strong>Perlu Pembenahan:</strong> {fb.improvementFeedback}</span>
-                        </div>
-                        {fb.recommendation && (
-                          <div className="text-[10px] text-indigo-600 dark:text-indigo-400 italic pt-1 border-t border-slate-100 dark:border-slate-800">
-                            Usulan: {fb.recommendation}
+
+                      {directFeedbacks.length > 0 ? (
+                        directFeedbacks.map(fb => (
+                          <div key={fb.id} className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-1.5">
+                            <div className="flex items-center justify-between font-bold text-slate-900 dark:text-slate-100 text-[11px]">
+                              <span>{fb.respondentName}</span>
+                              <span className="text-[10px] text-slate-400 font-normal">{fb.roleInFactory}</span>
+                            </div>
+                            <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
+                              <div className="flex items-start gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                <span><strong>Kekuatan:</strong> {fb.positiveFeedback}</span>
+                              </div>
+                              <div className="flex items-start gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                                <span><strong>Perlu Pembenahan:</strong> {fb.improvementFeedback}</span>
+                              </div>
+                              {fb.recommendation && (
+                                <div className="text-[10px] text-indigo-600 dark:text-indigo-400 italic pt-1 border-t border-slate-100 dark:border-slate-800">
+                                  Usulan: {fb.recommendation}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
-                      </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-4 text-[11px] text-slate-400 italic">
+                          Tidak ada responden hubungan kerja langsung.
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
 
-              </div>
+                    {/* B. Hubungan Kerja Tidak Langsung */}
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                      <div className="font-bold text-slate-900 dark:text-white uppercase text-[11px] border-b border-slate-200 dark:border-slate-700 pb-1.5 flex items-center justify-between">
+                        <span>B. Hubungan Kerja Tidak Langsung</span>
+                        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold font-mono">
+                          {indirectFeedbacks.length} Responden
+                        </span>
+                      </div>
+
+                      {indirectFeedbacks.length > 0 ? (
+                        indirectFeedbacks.map(fb => (
+                          <div key={fb.id} className="p-3 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-1.5">
+                            <div className="flex items-center justify-between font-bold text-slate-900 dark:text-slate-100 text-[11px]">
+                              <span>{fb.respondentName}</span>
+                              <span className="text-[10px] text-slate-400 font-normal">{fb.roleInFactory}</span>
+                            </div>
+                            <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
+                              <div className="flex items-start gap-1.5">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                <span><strong>Kekuatan:</strong> {fb.positiveFeedback}</span>
+                              </div>
+                              <div className="flex items-start gap-1.5">
+                                <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                                <span><strong>Perlu Pembenahan:</strong> {fb.improvementFeedback}</span>
+                              </div>
+                              {fb.recommendation && (
+                                <div className="text-[10px] text-indigo-600 dark:text-indigo-400 italic pt-1 border-t border-slate-100 dark:border-slate-800">
+                                  Usulan: {fb.recommendation}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-4 text-[11px] text-slate-400 italic">
+                          Tidak ada responden hubungan kerja tidak langsung.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
           </div>
