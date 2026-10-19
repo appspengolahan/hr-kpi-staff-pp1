@@ -56,9 +56,11 @@ import {
   SlidersHorizontal,
   Crown,
   Share2,
-  ClipboardList
+  ClipboardList,
+  ChevronDown,
+  Layers
 } from 'lucide-react';
-import { jsPDF } from 'jspdf';
+import { exportKpiPdf, KpiExportTarget } from '../utils/kpiPdfExport';
 import { formatWibDate, formatWibTime } from '../utils/indonesiaDateUtils';
 import { KpiDataEntryModal } from './KpiDataEntryModal';
 import { KpiRespondentSelfService } from './KpiRespondentSelfService';
@@ -274,145 +276,47 @@ export const KpiScorecardCalculator: React.FC = () => {
     return { totalWeightedScore: rounded, grade: g, actionAdvice: advice };
   }, [roleMetrics, metricScores]);
 
-  // Export PDF combining Official Template & Qualitative Synthesis
-  const handleExportOfficialPdf = () => {
+  // Export PDF modular (Semua Lembar atau Lembar Pilihan)
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const [exportingTarget, setExportingTarget] = useState<KpiExportTarget | null>(null);
+
+  const handleExportPdf = (target: KpiExportTarget) => {
+    setExportingTarget(target);
     setIsExportingPdf(true);
-    try {
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
+    setIsExportDropdownOpen(false);
 
-      const pageWidth = doc.internal.pageSize.getWidth();
-      let y = 14;
+    setTimeout(() => {
+      try {
+        exportKpiPdf(target, {
+          profile: currentProfile,
+          synthesis,
+          domainAverages,
+          indexKinerja,
+          activeRole,
+          roleMetrics,
+          metricScores,
+          totalWeightedScore,
+          grade,
+          actionAdvice,
+          staffRecord: selectedStaffRecord || undefined
+        });
 
-      // Header Brand
-      doc.setFillColor(15, 23, 42); // slate-900
-      doc.rect(0, 0, pageWidth, 18, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10);
-      doc.text('PT BATU KARANG - DIVISI PRODUKSI I (PENGOLAHAN)', 14, 8);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text('LAPORAN EVALUASI KINERJA KARYAWAN (KPI 360° HYBRID: KUANTITATIF & KUALITATIF)', 14, 13);
+        const targetLabels: Record<KpiExportTarget, string> = {
+          ALL: 'Laporan Lengkap 360° (Semua Lembar)',
+          OFFICIAL_FORM: 'Lembar 1: Formulir Resmi KPI',
+          QUALITATIVE_BARS: 'Lembar 2: Penerjemah Kualitatif & BARS',
+          WEIGHT_SIMULATION: 'Lembar 3: Simulasi Bobot Metrik'
+        };
 
-      y = 26;
-      doc.setTextColor(15, 23, 42);
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.text(`PENILAIAN KINERJA KARYAWAN: ${currentProfile.nama}`, 14, y);
-      y += 5;
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Jabatan: ${currentProfile.jabatan} | NIP: ${currentProfile.nip} | Level: ${currentProfile.level} | Sekup: ${currentProfile.sekup}`, 14, y);
-      y += 4;
-      doc.text(`Periode Penilaian: ${currentProfile.periodePenilaian} | Indeks Kinerja: ${indexKinerja} / 5.00 (Kriteria: BAIK)`, 14, y);
-
-      y += 8;
-      doc.setDrawColor(203, 213, 225);
-      doc.line(14, y, pageWidth - 14, y);
-      y += 6;
-
-      // Section 1: Ringkasan Kualitatif Eksekutif
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(217, 119, 6); // amber-600
-      doc.text('I. SINTESIS KUALITATIF EKSEKUTIF (PENERJEMAHAN ANGKA KUANTITATIF)', 14, y);
-      y += 5;
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(51, 65, 85);
-      const splitPersona = doc.splitTextToSize(synthesis.personaSummary, pageWidth - 28);
-      doc.text(splitPersona, 14, y);
-      y += splitPersona.length * 4 + 4;
-
-      // Discrepancy Alert
-      if (synthesis.discrepancyAlert.hasAlert) {
-        doc.setFillColor(254, 242, 242); // red-50
-        doc.rect(14, y, pageWidth - 28, 18, 'F');
-        doc.setTextColor(185, 28, 28); // red-700
-        doc.setFont('helvetica', 'bold');
-        doc.text(`[PERINGATAN ANOMALI] ${synthesis.discrepancyAlert.title}`, 16, y + 5);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5);
-        const splitAlert = doc.splitTextToSize(synthesis.discrepancyAlert.description, pageWidth - 32);
-        doc.text(splitAlert, 16, y + 10);
-        y += 22;
+        setSwitchToast(`PDF ${targetLabels[target]} untuk ${currentProfile.nama} berhasil diunduh!`);
+        setTimeout(() => setSwitchToast(null), 4000);
+      } catch (err) {
+        console.error('Gagal mencetak PDF:', err);
+      } finally {
+        setIsExportingPdf(false);
+        setExportingTarget(null);
       }
-
-      // Section 2: Matriks Rata-Rata Domain
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(217, 119, 6);
-      doc.text('II. REKAPITULASI 4 DOMAIN KOMPETENSI OPERASIONAL', 14, y);
-      y += 5;
-
-      domainAverages.forEach((dom) => {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.setTextColor(15, 23, 42);
-        doc.text(`- ${dom.category}: ${dom.avg} / 5.00 (${dom.count} Parameter)`, 16, y);
-        y += 4;
-      });
-
-      y += 4;
-      // Section 3: Masukan Rekan Kerja (Ambar Istiqomah)
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(217, 119, 6);
-      doc.text('III. EVALUASI REKAN KERJA TERSTRUKTUR (PEER REVIEW 360°)', 14, y);
-      y += 5;
-
-      currentProfile.peerFeedbacks.forEach((fb) => {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.setTextColor(15, 23, 42);
-        doc.text(`${fb.respondentName} (${fb.roleInFactory}):`, 16, y);
-        y += 4;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5);
-        doc.setTextColor(51, 65, 85);
-        doc.text(`  (+) Kekuatan: ${fb.positiveFeedback}`, 16, y);
-        y += 3.5;
-        doc.text(`  (-) Hambatan: ${fb.improvementFeedback}`, 16, y);
-        y += 4.5;
-      });
-
-      y += 4;
-      // Section 4: Rencana Pembinaan
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(217, 119, 6);
-      doc.text('IV. RENCANA AKSI PEMBINAAN OPERASIONAL (ACTION PLAN)', 14, y);
-      y += 5;
-
-      synthesis.coachingActionPlan.forEach((plan, idx) => {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.setTextColor(15, 23, 42);
-        doc.text(`${idx + 1}. ${plan.focusArea} (Target: ${plan.targetTimeline})`, 16, y);
-        y += 4;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5);
-        doc.setTextColor(51, 65, 85);
-        doc.text(`   Langkah Nyata: ${plan.concreteStep}`, 16, y);
-        y += 3.5;
-        doc.text(`   Mentor / Pendamping: ${plan.mentor}`, 16, y);
-        y += 4.5;
-      });
-
-      // Footer
-      doc.setFontSize(7);
-      doc.setTextColor(148, 163, 184);
-      doc.text(`Dicetak resmi melalui Sistem AI Studio Divisi Produksi I • Tanggal: ${formatWibDate(new Date())} • ${formatWibTime(new Date())}`, 14, 287);
-
-      doc.save(`KPI-360-${currentProfile.nama.replace(/\s+/g, '_')}-${currentProfile.periodePenilaian.replace(/\s+/g, '_')}.pdf`);
-    } finally {
-      setIsExportingPdf(false);
-    }
+    }, 80);
   };
 
   // Filtered parameters for Official Form
@@ -449,16 +353,142 @@ export const KpiScorecardCalculator: React.FC = () => {
               </p>
             </div>
 
-            {/* Quick Export PDF on top right */}
-            <div className="shrink-0 self-start lg:self-center">
-              <button
-                onClick={handleExportOfficialPdf}
-                disabled={isExportingPdf}
-                className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all border border-slate-700"
-              >
-                <Download className="w-3.5 h-3.5 text-amber-400 dark:text-white" />
-                <span>{isExportingPdf ? 'Membuat PDF...' : 'Ekspor PDF Terpadu'}</span>
-              </button>
+            {/* Quick Export PDF with Modular Dropdown */}
+            <div className="shrink-0 self-start lg:self-center relative">
+              <div className="inline-flex rounded-xl shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => handleExportPdf('ALL')}
+                  disabled={isExportingPdf}
+                  className="px-3.5 py-2 rounded-l-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-all border border-slate-700 disabled:opacity-50"
+                  title="Unduh seluruh lembar evaluasi (Formulir Resmi, BARS, & Simulasi Bobot)"
+                >
+                  <Download className={`w-3.5 h-3.5 text-amber-400 dark:text-white ${isExportingPdf && exportingTarget === 'ALL' ? 'animate-bounce' : ''}`} />
+                  <span>{isExportingPdf && exportingTarget === 'ALL' ? 'Membuat PDF...' : 'Ekspor Semua Lembar'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
+                  disabled={isExportingPdf}
+                  className="px-2.5 py-2 rounded-r-xl bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-semibold flex items-center transition-all border-y border-r border-slate-700 disabled:opacity-50 hover:bg-slate-750"
+                  title="Buka pilihan cetak lembar spesifik"
+                >
+                  <ChevronDown className={`w-3.5 h-3.5 text-amber-400 transition-transform ${isExportDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {/* Floating Dropdown Menu for Modular PDF Export */}
+              {isExportDropdownOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setIsExportDropdownOpen(false)} 
+                  />
+                  <div className="absolute right-0 mt-2 w-84 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-2.5 z-50 text-xs">
+                    <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+                      <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-amber-500" />
+                        <span>Pilihan Ekspor Dokumen PDF</span>
+                      </div>
+                      <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Cetak seluruh bundel 3-in-1 atau lembar spesifik saja:
+                      </p>
+                    </div>
+
+                    <div className="py-1.5 space-y-1">
+                      {/* Option 1: ALL */}
+                      <button
+                        type="button"
+                        onClick={() => handleExportPdf('ALL')}
+                        disabled={isExportingPdf}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-all flex items-start gap-2.5 group border border-transparent hover:border-amber-200 dark:hover:border-amber-900/50"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 mt-0.5 font-black text-xs font-mono">
+                          ALL
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-slate-900 dark:text-white group-hover:text-amber-700 dark:group-hover:text-amber-400 flex items-center justify-between">
+                            <span>1. Semua Lembar (3-in-1 Lengkap)</span>
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 font-mono font-bold">
+                              3 Hal
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                            Menggabungkan Formulir Resmi, Sintesis BARS, & Simulasi Bobot ke dalam 1 berkas resmi.
+                          </p>
+                        </div>
+                      </button>
+
+                      <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
+
+                      {/* Option 2: Lembar 1 */}
+                      <button
+                        type="button"
+                        onClick={() => handleExportPdf('OFFICIAL_FORM')}
+                        disabled={isExportingPdf}
+                        className="w-full text-left p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-start gap-2.5 group"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 mt-0.5">
+                          <FileText className="w-4 h-4 text-amber-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400">
+                            2. Khusus Lembar Formulir Resmi KPI
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                            Hanya tabel parameter kuantitatif, data presensi, sanksi, & kolom tanda tangan.
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Option 3: Lembar 2 */}
+                      <button
+                        type="button"
+                        onClick={() => handleExportPdf('QUALITATIVE_BARS')}
+                        disabled={isExportingPdf}
+                        className="w-full text-left p-2 rounded-xl hover:bg-indigo-50/60 dark:hover:bg-indigo-950/40 transition-all flex items-start gap-2.5 group"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Sparkles className="w-4 h-4 text-indigo-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                            3. Khusus Penerjemah Kualitatif (BARS)
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                            Persona perilaku kerja, anomali lapangan, peer review, & Action Plan 30-60-90.
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Option 4: Lembar 3 */}
+                      <button
+                        type="button"
+                        onClick={() => handleExportPdf('WEIGHT_SIMULATION')}
+                        disabled={isExportingPdf}
+                        className="w-full text-left p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-start gap-2.5 group"
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 mt-0.5">
+                          <Calculator className="w-4 h-4 text-emerald-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                            4. Khusus Simulasi Bobot Metrik Job Desk
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                            Kalkulator bobot SK Direksi, total skor tertimbang (0-100), grade, & arahan manajemen.
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+
+                    <div className="px-3 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 rounded-xl text-[10.5px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                      <span>Staf: <strong className="text-slate-800 dark:text-slate-200">{currentProfile.nama}</strong></span>
+                      <span className="font-mono text-[9.5px]">{currentProfile.periodePenilaian}</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -697,6 +727,16 @@ export const KpiScorecardCalculator: React.FC = () => {
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Input / Edit Nilai 4 Responden</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExportPdf('OFFICIAL_FORM')}
+                    disabled={isExportingPdf}
+                    className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all border border-slate-700 disabled:opacity-50"
+                    title="Unduh file PDF khusus Lembar Formulir Resmi KPI ini"
+                  >
+                    <Download className={`w-3.5 h-3.5 text-amber-400 ${isExportingPdf && exportingTarget === 'OFFICIAL_FORM' ? 'animate-bounce' : ''}`} />
+                    <span>{isExportingPdf && exportingTarget === 'OFFICIAL_FORM' ? 'Membuat PDF...' : 'Unduh PDF Formulir Ini'}</span>
                   </button>
                   <span className="inline-block px-2.5 py-1.5 rounded-md bg-slate-100 dark:bg-slate-800 font-mono font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                     DOKUMEN RESMI 360°
@@ -1140,17 +1180,31 @@ export const KpiScorecardCalculator: React.FC = () => {
               </span>
             </div>
 
-            <h3 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-              <span>Dari Skor Kuantitatif Menjadi Penjelasan Kualitatif yang Aplikatif</span>
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-400" />
+                  <span>Dari Skor Kuantitatif Menjadi Penjelasan Kualitatif yang Aplikatif</span>
+                </h3>
+                <p className="text-xs text-slate-300 max-w-3xl leading-relaxed mt-1">
+                  Banyak orang kesulitan mencerna apa arti skor <strong>3,58</strong> atau <strong>3,38</strong>. 
+                  Modul ini secara otomatis mengekstrak seluruh angka kuantitatif, catatan sanksi penimbangan, dan presensi riil menjadi 
+                  <strong> narasi kepribadian kerja</strong>, <strong>identifikasi bias rekan kerja (*Halo Effect*)</strong>, 
+                  serta <strong>rencana pembinaan terukur (30-60-90 hari)</strong> untuk manajemen.
+                </p>
+              </div>
 
-            <p className="text-xs text-slate-300 max-w-4xl leading-relaxed">
-              Banyak orang kesulitan mencerna apa arti skor <strong>3,58</strong> atau <strong>3,38</strong>. 
-              Modul ini secara otomatis mengekstrak seluruh angka kuantitatif, catatan sanksi penimbangan, dan presensi riil menjadi 
-              <strong> narasi kepribadian kerja</strong>, <strong>identifikasi bias rekan kerja (*Halo Effect*)</strong>, 
-              serta <strong>rencana pembinaan terukur (30-60-90 hari)</strong> untuk manajemen.
-            </p>
+              <button
+                type="button"
+                onClick={() => handleExportPdf('QUALITATIVE_BARS')}
+                disabled={isExportingPdf}
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md transition-all shrink-0 self-start sm:self-center disabled:opacity-50"
+                title="Unduh PDF khusus Lembar 2 Penerjemah Kualitatif BARS & Rekomendasi Eksekutif"
+              >
+                <Download className={`w-3.5 h-3.5 text-slate-950 ${isExportingPdf && exportingTarget === 'QUALITATIVE_BARS' ? 'animate-bounce' : ''}`} />
+                <span>{isExportingPdf && exportingTarget === 'QUALITATIVE_BARS' ? 'Membuat PDF...' : 'Unduh PDF Lembar BARS'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Persona & Radar Visual Analysis Grid */}
@@ -1409,30 +1463,44 @@ export const KpiScorecardCalculator: React.FC = () => {
                 </p>
               </div>
 
-              {/* Mode Switcher */}
-              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl self-start md:self-auto">
+              {/* Action Buttons & Mode Switcher */}
+              <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
                 <button
-                  onClick={() => setSelectionMode('individual')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    selectionMode === 'individual'
-                      ? 'bg-amber-500 text-slate-950 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-                  }`}
+                  type="button"
+                  onClick={() => handleExportPdf('WEIGHT_SIMULATION')}
+                  disabled={isExportingPdf}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all border border-slate-700 disabled:opacity-50"
+                  title="Unduh PDF khusus Hasil Simulasi Bobot Metrik Job Desk ini"
                 >
-                  <User className="w-3.5 h-3.5" />
-                  <span>Pilih Per Staf</span>
+                  <Download className={`w-3.5 h-3.5 text-emerald-400 ${isExportingPdf && exportingTarget === 'WEIGHT_SIMULATION' ? 'animate-bounce' : ''}`} />
+                  <span>{isExportingPdf && exportingTarget === 'WEIGHT_SIMULATION' ? 'Membuat PDF...' : 'Unduh PDF Simulasi'}</span>
                 </button>
-                <button
-                  onClick={() => setSelectionMode('role')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    selectionMode === 'role'
-                      ? 'bg-amber-500 text-slate-950 shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
-                  }`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Pilih Per Jabatan</span>
-                </button>
+
+                {/* Mode Switcher */}
+                <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                  <button
+                    onClick={() => setSelectionMode('individual')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      selectionMode === 'individual'
+                        ? 'bg-amber-500 text-slate-950 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    <span>Pilih Per Staf</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectionMode('role')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      selectionMode === 'role'
+                        ? 'bg-amber-500 text-slate-950 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Pilih Per Jabatan</span>
+                  </button>
+                </div>
               </div>
             </div>
 
