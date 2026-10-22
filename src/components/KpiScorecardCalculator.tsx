@@ -117,6 +117,68 @@ export const KpiScorecardCalculator: React.FC = () => {
     return parts[1] || '2026';
   });
   const [customPeriodInput, setCustomPeriodInput] = useState<string>('');
+  
+  // Qualitative Display Mode: 'full' (Narasi Perilaku BARS Lengkap) vs 'compact' (Ringkas)
+  const [qualitativeDisplayMode, setQualitativeDisplayMode] = useState<'full' | 'compact'>('full');
+  // Scorecard Table Layout Mode: 'wide' (Lebar Penuh 12 Kolom) vs 'side' (Berdampingan 8/4 Kolom)
+  const [scorecardLayoutMode, setScorecardLayoutMode] = useState<'wide' | 'side'>('wide');
+
+  // BARS Qualitative Mapping Helper (Translates numerical avgScore into qualitative behavior)
+  const getBarsLevelInfo = (avgScore: number, param: Kpi360Parameter) => {
+    if (avgScore >= 4.05) {
+      return {
+        level: 5,
+        levelLabel: 'Level 5 (Sangat Baik)',
+        levelBadge: 'L5: Sangat Baik',
+        badgeClass: 'bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-300 dark:border-blue-700',
+        borderClass: 'border-l-blue-500',
+        dotClass: 'bg-blue-500',
+        meaning: param.barsDescription?.level5 || 'Kinerja teladan istimewa yang melampaui seluruh target operasional pabrik.'
+      };
+    }
+    if (avgScore >= 3.05) {
+      return {
+        level: 4,
+        levelLabel: 'Level 4 (Baik)',
+        levelBadge: 'L4: Baik',
+        badgeClass: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700',
+        borderClass: 'border-l-emerald-500',
+        dotClass: 'bg-emerald-500',
+        meaning: param.barsDescription?.level4 || 'Konsisten memenuhi standar operasional kerja dan SOP dengan tertib.'
+      };
+    }
+    if (avgScore >= 2.05) {
+      return {
+        level: 3,
+        levelLabel: 'Level 3 (Cukup)',
+        levelBadge: 'L3: Cukup',
+        badgeClass: 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-700',
+        borderClass: 'border-l-amber-500',
+        dotClass: 'bg-amber-500',
+        meaning: param.barsDescription?.level3 || 'Memenuhi kriteria kerja standar minimum, sesekali memerlukan arahan atasan.'
+      };
+    }
+    if (avgScore >= 1.05) {
+      return {
+        level: 2,
+        levelLabel: 'Level 2 (Kurang)',
+        levelBadge: 'L2: Kurang',
+        badgeClass: 'bg-orange-100 text-orange-800 dark:bg-orange-950/80 dark:text-orange-300 border-orange-300 dark:border-orange-700',
+        borderClass: 'border-l-orange-500',
+        dotClass: 'bg-orange-500',
+        meaning: param.barsDescription?.level2 || 'Kerap belum memenuhi target kerja, membutuhkan pendampingan aktif.'
+      };
+    }
+    return {
+      level: 1,
+      levelLabel: 'Level 1 (Sangat Kurang)',
+      levelBadge: 'L1: Sangat Kurang',
+      badgeClass: 'bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300 border-red-300 dark:border-red-700',
+      borderClass: 'border-l-red-500',
+      dotClass: 'bg-red-500',
+      meaning: param.barsDescription?.level1 || 'Jauh di bawah standar kerja, terjadi anomali atau pelanggaran prosedur kritis.'
+    };
+  };
 
   const handleUpdateEvaluationPeriod = (newPeriod: string) => {
     if (!newPeriod || !newPeriod.trim()) return;
@@ -897,14 +959,15 @@ export const KpiScorecardCalculator: React.FC = () => {
               </div>
             </div>
 
-            {/* Layout: Left 2 Cols (Scorecard Table) & Right 1 Col (Side Indicators) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Scorecard Table Layout: Adaptable Wide (12 Cols) or Side-by-Side (8/4 Cols) */}
+            <div className={`grid grid-cols-1 ${scorecardLayoutMode === 'side' ? 'lg:grid-cols-12' : 'grid-cols-1'} gap-6`}>
               
-              {/* Left Column: Parameter Scorecard Table */}
-              <div className="lg:col-span-8 space-y-4">
+              {/* Scorecard Table Section */}
+              <div className={`${scorecardLayoutMode === 'side' ? 'lg:col-span-8' : 'w-full'} space-y-4`}>
                 
-                {/* Category Filter Chips & Calibration Button */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 text-xs">
+                {/* Category Filter Chips, View Modes & Calibration Button */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-1 text-xs">
+                  {/* Category Filters */}
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                     <span className="text-[11px] font-semibold text-slate-400 shrink-0">Filter:</span>
                     {['ALL', 'Kedisiplinan', 'Tanggungjawab', 'Sikap', 'Kompetensi'].map(cat => (
@@ -922,88 +985,184 @@ export const KpiScorecardCalculator: React.FC = () => {
                     ))}
                   </div>
 
-                  <button
-                    onClick={() => setIsEntryModalOpen(true)}
-                    className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold text-[11px] flex items-center gap-1 shrink-0 self-start sm:self-auto"
-                  >
-                    <SlidersHorizontal className="w-3.5 h-3.5" />
-                    <span>Kalibrasi Data Perilaku Lapangan</span>
-                  </button>
+                  {/* Display Controls & Calibration Action */}
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    {/* View Mode: Full Narrative vs Compact */}
+                    <div className="flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setQualitativeDisplayMode('full')}
+                        className={`px-2 py-1 rounded-md font-semibold transition-all flex items-center gap-1 ${
+                          qualitativeDisplayMode === 'full'
+                            ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-300 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                        }`}
+                        title="Tampilkan langsung arti kualitatif dan narasi operasional BARS secara lengkap di setiap baris"
+                      >
+                        <BookOpen className="w-3 h-3 text-indigo-500" />
+                        <span>Narasi Penuh BARS</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQualitativeDisplayMode('compact')}
+                        className={`px-2 py-1 rounded-md font-semibold transition-all flex items-center gap-1 ${
+                          qualitativeDisplayMode === 'compact'
+                            ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-300 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                        }`}
+                        title="Tampilkan dalam format ringkas untuk memadatkan baris tabel"
+                      >
+                        <Layers className="w-3 h-3 text-slate-500" />
+                        <span>Ringkas</span>
+                      </button>
+                    </div>
+
+                    {/* Layout Toggle: Wide vs Side-by-side */}
+                    <button
+                      type="button"
+                      onClick={() => setScorecardLayoutMode(m => m === 'wide' ? 'side' : 'wide')}
+                      className={`px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all flex items-center gap-1 ${
+                        scorecardLayoutMode === 'wide'
+                          ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                      }`}
+                      title={scorecardLayoutMode === 'wide' ? 'Beralih ke mode berdampingan (8 kolom)' : 'Perluas tabel ke lebar penuh (12 kolom)'}
+                    >
+                      <Target className="w-3 h-3" />
+                      <span>{scorecardLayoutMode === 'wide' ? 'Tabel Lebar Penuh' : 'Mode Berdampingan'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => setIsEntryModalOpen(true)}
+                      className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold text-[11px] flex items-center gap-1 shrink-0"
+                    >
+                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                      <span>Kalibrasi Data Lapangan</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Scorecard Table */}
-                <div className="overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
+                <div className="overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700 shadow-xs">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border-b border-slate-300 dark:border-slate-700">
                         <th className="py-2.5 px-3 font-bold border-r border-slate-300 dark:border-slate-700 w-12 text-center">NO</th>
-                        <th className="py-2.5 px-3 font-bold border-r border-slate-300 dark:border-slate-700">PARAMETER PENILAIAN KINERJA</th>
-                        <th className="py-2.5 px-2 font-bold border-r border-slate-300 dark:border-slate-700 w-16 text-center font-mono">TOTAL (4 Data)</th>
+                        <th className="py-2.5 px-3 font-bold border-r border-slate-300 dark:border-slate-700 min-w-[200px]">PARAMETER PENILAIAN KINERJA</th>
+                        <th className="py-2.5 px-2 font-bold border-r border-slate-300 dark:border-slate-700 w-16 text-center font-mono">TOTAL</th>
                         <th className="py-2.5 px-2 font-bold border-r border-slate-300 dark:border-slate-700 w-14 text-center font-mono">AVG</th>
-                        <th className="py-2.5 px-3 font-bold border-r border-slate-300 dark:border-slate-700 w-20 text-center">KRITERIA</th>
-                        <th className="py-2.5 px-2 font-bold text-center w-24">AKSI KUALITATIF</th>
+                        <th className="py-2.5 px-3 font-bold border-r border-slate-300 dark:border-slate-700 w-24 text-center">KRITERIA</th>
+                        <th className="py-2.5 px-3 font-bold text-left min-w-[320px] lg:min-w-[380px]">
+                          <div className="flex items-center justify-between">
+                            <span>MAKNA KUALITATIF PERILAKU KERJA (BARS LEVEL 1 &ndash; 5)</span>
+                            <span className="text-[10px] font-normal text-indigo-600 dark:text-indigo-400 font-mono hidden sm:inline">
+                              *Otomatis Sesuai Skor
+                            </span>
+                          </div>
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                      {displayedParams.map((param, idx) => (
-                        <tr 
-                          key={param.id}
-                          className="hover:bg-amber-50/50 dark:hover:bg-slate-800/50 transition-colors"
-                        >
-                          <td className="py-2 px-3 text-center font-mono font-bold text-slate-500 border-r border-slate-200 dark:border-slate-800">
-                            {param.subCategoryNumber}
-                          </td>
-                          <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800">
-                            <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                              {param.evaluationAuthority === 'MUTLAK_ATASAN' && (
-                                <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                              )}
-                              <span>{param.name}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                Kategori: {param.category}
+                      {displayedParams.map((param) => {
+                        const barsInfo = getBarsLevelInfo(param.avgScore, param);
+                        return (
+                          <tr 
+                            key={param.id}
+                            className="hover:bg-amber-50/40 dark:hover:bg-slate-800/50 transition-colors"
+                          >
+                            <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-500 border-r border-slate-200 dark:border-slate-800 align-top pt-3">
+                              {param.subCategoryNumber}
+                            </td>
+                            <td className="py-2.5 px-3 border-r border-slate-200 dark:border-slate-800 align-top">
+                              <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                                {param.evaluationAuthority === 'MUTLAK_ATASAN' && (
+                                  <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                )}
+                                <span>{param.name}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  Kategori: {param.category}
+                                </span>
+                                {param.evaluationAuthority === 'MUTLAK_ATASAN' && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300/60" title="Parameter ini dinilai mutlak oleh Atasan Langsung (100% Hak Prerogatif)">
+                                    <span>Mutlak Atasan</span>
+                                  </span>
+                                )}
+                                {param.evaluationAuthority === 'DATA_SISTEM' && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/60" title="Parameter ini disinkronkan dari data presensi/sistem">
+                                    <span>Data Sistem</span>
+                                  </span>
+                                )}
+                                {(!param.evaluationAuthority || param.evaluationAuthority === 'KOLABORASI_360') && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-medium px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700" title="Dinilai bersama oleh Atasan dan 3 Rekan Kerja">
+                                    <span>360° Rekan</span>
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-2 text-center font-mono font-bold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 align-top pt-3">
+                              {param.totalScore.toFixed(2)}
+                            </td>
+                            <td className="py-2.5 px-2 text-center font-mono font-black text-indigo-600 dark:text-indigo-400 border-r border-slate-200 dark:border-slate-800 align-top pt-3">
+                              {param.avgScore.toFixed(2)}
+                            </td>
+                            <td className="py-2.5 px-3 text-center border-r border-slate-200 dark:border-slate-800 align-top pt-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-block ${barsInfo.badgeClass}`}>
+                                {param.kriteria}
                               </span>
-                              {param.evaluationAuthority === 'MUTLAK_ATASAN' && (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300/60" title="Parameter ini dinilai mutlak oleh Atasan Langsung (100% Hak Prerogatif)">
-                                  <span>Mutlak Atasan</span>
-                                </span>
+                            </td>
+                            <td className="py-2.5 px-3 align-top">
+                              {qualitativeDisplayMode === 'full' ? (
+                                <div className={`p-2.5 rounded-xl border-l-4 ${barsInfo.borderClass} bg-slate-50 dark:bg-slate-900/60 border border-slate-200/90 dark:border-slate-800 transition-all hover:shadow-xs space-y-1.5`}>
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${barsInfo.badgeClass}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${barsInfo.dotClass}`} />
+                                        <span>{barsInfo.levelLabel}</span>
+                                      </span>
+                                      <span className="text-[10px] text-slate-400 font-mono">
+                                        (Skor {param.avgScore.toFixed(2)})
+                                      </span>
+                                    </div>
+                                    <button
+                                      onClick={() => setSelectedBarsParam(param)}
+                                      className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-semibold flex items-center gap-1 hover:underline transition-colors ml-auto"
+                                      title="Bandingkan narasi 5 level perilaku (Level 1 s/d Level 5)"
+                                    >
+                                      <Info className="w-3 h-3 text-indigo-500" />
+                                      <span>Bandingkan 5 Level</span>
+                                    </button>
+                                  </div>
+                                  <p className="text-[11.5px] leading-relaxed text-slate-700 dark:text-slate-300 italic font-normal">
+                                    "{barsInfo.meaning}"
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between gap-2 pt-1">
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border shrink-0 ${barsInfo.badgeClass}`}>
+                                      <span className={`w-1.5 h-1.5 rounded-full ${barsInfo.dotClass}`} />
+                                      <span>{barsInfo.levelBadge}</span>
+                                    </span>
+                                    <span className="text-[11px] text-slate-700 dark:text-slate-300 truncate" title={barsInfo.meaning}>
+                                      "{barsInfo.meaning}"
+                                    </span>
+                                  </div>
+                                  <button
+                                    onClick={() => setSelectedBarsParam(param)}
+                                    className="px-2 py-0.5 rounded text-[10px] text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 font-semibold shrink-0 flex items-center gap-0.5"
+                                    title="Buka rincian lengkap 5 level BARS"
+                                  >
+                                    <Info className="w-3 h-3" />
+                                    <span>Detail</span>
+                                  </button>
+                                </div>
                               )}
-                              {param.evaluationAuthority === 'DATA_SISTEM' && (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/60" title="Parameter ini disinkronkan dari data presensi/sistem">
-                                  <span>Data Sistem</span>
-                                </span>
-                              )}
-                              {(!param.evaluationAuthority || param.evaluationAuthority === 'KOLABORASI_360') && (
-                                <span className="inline-flex items-center gap-0.5 text-[9px] font-medium px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700" title="Dinilai bersama oleh Atasan dan 3 Rekan Kerja">
-                                  <span>360° Rekan</span>
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-2 px-2 text-center font-mono font-bold text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
-                            {param.totalScore.toFixed(2)}
-                          </td>
-                          <td className="py-2 px-2 text-center font-mono font-black text-indigo-600 dark:text-indigo-400 border-r border-slate-200 dark:border-slate-800">
-                            {param.avgScore.toFixed(2)}
-                          </td>
-                          <td className="py-2 px-3 text-center border-r border-slate-200 dark:border-slate-800">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/40">
-                              {param.kriteria}
-                            </span>
-                          </td>
-                          <td className="py-2 px-2 text-center">
-                            <button
-                              onClick={() => setSelectedBarsParam(param)}
-                              className="px-2 py-1 rounded bg-slate-100 hover:bg-indigo-50 dark:bg-slate-800 dark:hover:bg-indigo-950 text-indigo-600 dark:text-indigo-300 border border-slate-200 dark:border-slate-700 text-[10px] font-medium transition-colors flex items-center justify-center gap-1 mx-auto"
-                              title="Lihat makna perilaku kualitatif (BARS)"
-                            >
-                              <Info className="w-3 h-3 text-indigo-500" />
-                              <span>Arti Angka</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                     <tfoot className="bg-slate-50 dark:bg-slate-800/80 font-bold border-t-2 border-slate-300 dark:border-slate-700 text-xs">
                       <tr>
@@ -1016,8 +1175,13 @@ export const KpiScorecardCalculator: React.FC = () => {
                         <td className="py-2.5 px-2 text-center font-mono font-black text-indigo-600 dark:text-indigo-400 border-r border-slate-300 dark:border-slate-700">
                           {avgScoreCalc.toFixed(2)}
                         </td>
-                        <td colSpan={2} className="py-2.5 px-3 text-center text-emerald-700 dark:text-emerald-400 font-bold">
-                          INDEX KINERJA: {indexKinerja} ({getKriteriaFromScore(indexKinerja)})
+                        <td colSpan={2} className="py-2.5 px-3 text-left pl-4 text-emerald-700 dark:text-emerald-400 font-bold">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <span>INDEX KINERJA: {indexKinerja} ({getKriteriaFromScore(indexKinerja)})</span>
+                            <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400 italic">
+                              *Seluruh angka otomatis terkonversi ke deskripsi kualitatif BARS Level 1 &ndash; 5
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     </tfoot>
@@ -1025,134 +1189,270 @@ export const KpiScorecardCalculator: React.FC = () => {
                 </div>
 
                 {/* Quick Hint */}
-                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 text-xs text-indigo-900 dark:text-indigo-300">
-                  <HelpCircle className="w-4 h-4 text-indigo-500 shrink-0" />
-                  <span>
-                    Klik tombol <strong>"Arti Angka"</strong> pada setiap baris untuk melihat deskripsi perilaku nyata (*Behaviorally Anchored Rating Scale*) di pabrik.
-                  </span>
-                </div>
-              </div>
-
-              {/* Right Column: Reference Indicators, Sanctions & Attendance */}
-              <div className="lg:col-span-4 space-y-4">
-                
-                {/* 1. Indikator Skala KPI */}
-                <div className="bg-slate-50 dark:bg-slate-800/70 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
-                  <h5 className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wider border-b border-slate-200 dark:border-slate-700 pb-1.5 flex items-center justify-between">
-                    <span>Indikator KPI:</span>
-                    <Award className="w-3.5 h-3.5 text-amber-500" />
-                  </h5>
-                  <div className="space-y-1 text-[11px] font-mono">
-                    <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja <= 1.0 ? 'bg-red-100 dark:bg-red-950/60 border border-red-300 font-bold' : ''}`}>
-                      <span className={indexKinerja <= 1.0 ? "font-bold text-red-800 dark:text-red-300" : "text-slate-500"}>a. 0.0 &ndash; 1.0</span>
-                      <span className="font-bold text-red-600">Sangat Kurang {indexKinerja <= 1.0 && '(Posisi Saat Ini)'}</span>
-                    </div>
-                    <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja > 1.0 && indexKinerja <= 2.0 ? 'bg-orange-100 dark:bg-orange-950/60 border border-orange-300 font-bold' : ''}`}>
-                      <span className={indexKinerja > 1.0 && indexKinerja <= 2.0 ? "font-bold text-orange-800 dark:text-orange-300" : "text-slate-500"}>b. 1.1 &ndash; 2.0</span>
-                      <span className="font-bold text-orange-600">Kurang {indexKinerja > 1.0 && indexKinerja <= 2.0 && '(Posisi Saat Ini)'}</span>
-                    </div>
-                    <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja > 2.0 && indexKinerja <= 3.0 ? 'bg-amber-100 dark:bg-amber-950/60 border border-amber-300 font-bold' : ''}`}>
-                      <span className={indexKinerja > 2.0 && indexKinerja <= 3.0 ? "font-bold text-amber-800 dark:text-amber-300" : "text-slate-500"}>c. 2.1 &ndash; 3.0</span>
-                      <span className="font-bold text-amber-600">Cukup {indexKinerja > 2.0 && indexKinerja <= 3.0 && '(Posisi Saat Ini)'}</span>
-                    </div>
-                    <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja > 3.0 && indexKinerja <= 4.0 ? 'bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 font-bold' : ''}`}>
-                      <span className={indexKinerja > 3.0 && indexKinerja <= 4.0 ? "font-bold text-emerald-800 dark:text-emerald-300" : "text-slate-500"}>d. 3.1 &ndash; 4.0</span>
-                      <span className="font-bold text-emerald-800 dark:text-emerald-300">Baik {indexKinerja > 3.0 && indexKinerja <= 4.0 && '(Posisi Saat Ini)'}</span>
-                    </div>
-                    <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja > 4.0 ? 'bg-blue-100 dark:bg-blue-950/60 border border-blue-300 font-bold' : ''}`}>
-                      <span className={indexKinerja > 4.0 ? "font-bold text-blue-800 dark:text-blue-300" : "text-slate-500"}>e. 4.1 &ndash; 5.0</span>
-                      <span className="font-bold text-blue-600">Sangat Baik {indexKinerja > 4.0 && '(Posisi Saat Ini)'}</span>
-                    </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 text-xs text-indigo-900 dark:text-indigo-300">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
+                    <span>
+                      <strong>Penerjemah Kualitatif Otomatis:</strong> Setiap skor rata-rata (AVG) langsung diterjemahkan menjadi makna perilaku operasional konkret dari standar BARS pabrik. Klik <strong>"Bandingkan 5 Level"</strong> untuk melihat perbandingannya.
+                    </span>
                   </div>
+                  <button
+                    onClick={() => setActiveTab('qualitative_synthesis')}
+                    className="font-bold underline text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 shrink-0 flex items-center gap-1 self-start sm:self-auto"
+                  >
+                    <span>Lihat Sintesis Eksekutif</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
 
-                {/* 2. Sanksi Administratif (Anomali Alert) */}
-                <div className="bg-red-50 dark:bg-red-950/40 p-4 rounded-xl border border-red-200 dark:border-red-900/60 space-y-2 text-xs">
-                  <h5 className="font-bold text-red-800 dark:text-red-300 uppercase text-[11px] tracking-wider border-b border-red-200 dark:border-red-900/60 pb-1.5 flex items-center justify-between">
-                    <span>Sanksi Administratif:</span>
-                    <AlertTriangle className="w-3.5 h-3.5 text-red-600 animate-pulse" />
-                  </h5>
-                  {currentProfile.sanksiAdministratif.length > 0 ? (
-                    <div className="space-y-1.5">
-                      {currentProfile.sanksiAdministratif.map((sanksi, i) => (
-                        <div key={i} className="text-[11px] font-semibold text-red-700 dark:text-red-300 bg-red-100/80 dark:bg-red-900/40 p-2 rounded-lg border border-red-200 dark:border-red-800">
-                          &bull; {sanksi}
+                {/* In Wide Mode, render the 4 side indicator cards here in a responsive 4-column row */}
+                {scorecardLayoutMode === 'wide' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+                    
+                    {/* 1. Indikator Skala KPI */}
+                    <div className="bg-slate-50 dark:bg-slate-800/70 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                      <h5 className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wider border-b border-slate-200 dark:border-slate-700 pb-1.5 flex items-center justify-between">
+                        <span>Indikator KPI:</span>
+                        <Award className="w-3.5 h-3.5 text-amber-500" />
+                      </h5>
+                      <div className="space-y-1 text-[11px] font-mono">
+                        <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja <= 1.0 ? 'bg-red-100 dark:bg-red-950/60 border border-red-300 font-bold' : ''}`}>
+                          <span className={indexKinerja <= 1.0 ? "font-bold text-red-800 dark:text-red-300" : "text-slate-500"}>a. 0.0 &ndash; 1.0</span>
+                          <span className="font-bold text-red-600">Sangat Kurang {indexKinerja <= 1.0 && '(Posisi)'}</span>
                         </div>
-                      ))}
-                      {currentProfile.nip === 'BK-PP1-025' && (
-                        <p className="text-[10px] text-red-600/90 dark:text-red-400 italic">
-                          Catatan: Insiden penimbangan cengkeh ini bertolak belakang dengan nilai rekan kerja yang memberi skor 3.88 ("Baik").
-                        </p>
+                        <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja > 1.0 && indexKinerja <= 2.0 ? 'bg-orange-100 dark:bg-orange-950/60 border border-orange-300 font-bold' : ''}`}>
+                          <span className={indexKinerja > 1.0 && indexKinerja <= 2.0 ? "font-bold text-orange-800 dark:text-orange-300" : "text-slate-500"}>b. 1.1 &ndash; 2.0</span>
+                          <span className="font-bold text-orange-600">Kurang {indexKinerja > 1.0 && indexKinerja <= 2.0 && '(Posisi)'}</span>
+                        </div>
+                        <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja > 2.0 && indexKinerja <= 3.0 ? 'bg-amber-100 dark:bg-amber-950/60 border border-amber-300 font-bold' : ''}`}>
+                          <span className={indexKinerja > 2.0 && indexKinerja <= 3.0 ? "font-bold text-amber-800 dark:text-amber-300" : "text-slate-500"}>c. 2.1 &ndash; 3.0</span>
+                          <span className="font-bold text-amber-600">Cukup {indexKinerja > 2.0 && indexKinerja <= 3.0 && '(Posisi)'}</span>
+                        </div>
+                        <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja > 3.0 && indexKinerja <= 4.0 ? 'bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 font-bold' : ''}`}>
+                          <span className={indexKinerja > 3.0 && indexKinerja <= 4.0 ? "font-bold text-emerald-800 dark:text-emerald-300" : "text-slate-500"}>d. 3.1 &ndash; 4.0</span>
+                          <span className="font-bold text-emerald-800 dark:text-emerald-300">Baik {indexKinerja > 3.0 && indexKinerja <= 4.0 && '(Posisi)'}</span>
+                        </div>
+                        <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja > 4.0 ? 'bg-blue-100 dark:bg-blue-950/60 border border-blue-300 font-bold' : ''}`}>
+                          <span className={indexKinerja > 4.0 ? "font-bold text-blue-800 dark:text-blue-300" : "text-slate-500"}>e. 4.1 &ndash; 5.0</span>
+                          <span className="font-bold text-blue-600">Sangat Baik {indexKinerja > 4.0 && '(Posisi)'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Sanksi Administratif */}
+                    <div className="bg-red-50 dark:bg-red-950/40 p-4 rounded-xl border border-red-200 dark:border-red-900/60 space-y-2 text-xs">
+                      <h5 className="font-bold text-red-800 dark:text-red-300 uppercase text-[11px] tracking-wider border-b border-red-200 dark:border-red-900/60 pb-1.5 flex items-center justify-between">
+                        <span>Sanksi Administratif:</span>
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-600 animate-pulse" />
+                      </h5>
+                      {currentProfile.sanksiAdministratif.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {currentProfile.sanksiAdministratif.map((sanksi, i) => (
+                            <div key={i} className="text-[11px] font-semibold text-red-700 dark:text-red-300 bg-red-100/80 dark:bg-red-900/40 p-2 rounded-lg border border-red-200 dark:border-red-800">
+                              &bull; {sanksi}
+                            </div>
+                          ))}
+                          {currentProfile.nip === 'BK-PP1-025' && (
+                            <p className="text-[10px] text-red-600/90 dark:text-red-400 italic">
+                              Catatan: Insiden timbang cengkeh berlawanan dengan nilai rekan kerja 3.88 ("Baik").
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Nihil Sanksi (Disiplin Bersih)</span>
+                        </span>
                       )}
                     </div>
-                  ) : (
-                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Nihil Sanksi (Catatan Disiplin Bersih)</span>
-                    </span>
-                  )}
-                </div>
 
-                {/* 3. Catatan Presensi Riil */}
-                <div className="bg-slate-50 dark:bg-slate-800/70 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
-                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5">
-                    <h5 className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wider">
-                      Catatan Presensi:
-                    </h5>
-                    <span className="text-xs font-mono font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-300">
-                      {currentProfile.catatanPresensi.persentaseKehadiran}%
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                    Periode: {currentProfile.catatanPresensi.periode || currentProfile.periodePenilaian}
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5 font-mono text-[11px] pt-1">
-                    <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                      <span className="text-slate-400 block text-[9px]">ALPHA:</span>
-                      <strong>{currentProfile.catatanPresensi.alpha}</strong>
-                    </div>
-                    <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                      <span className="text-slate-400 block text-[9px]">IJIN:</span>
-                      <strong>&plusmn; {currentProfile.catatanPresensi.ijinMenit} Menit</strong>
-                    </div>
-                    <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                      <span className="text-slate-400 block text-[9px]">SAKIT:</span>
-                      <strong>{currentProfile.catatanPresensi.sakit}</strong>
-                    </div>
-                    <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                      <span className="text-slate-400 block text-[9px]">PULANG AWAL:</span>
-                      <strong>&plusmn; {currentProfile.catatanPresensi.pulangAwalMenit} Menit</strong>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 4. Responden Penilaian (4 Rekan Kerja) */}
-                <div className="bg-slate-50 dark:bg-slate-800/70 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
-                  <h5 className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wider border-b border-slate-200 dark:border-slate-700 pb-1.5 flex items-center justify-between">
-                    <span>Responden Penilai:</span>
-                    <Users className="w-3.5 h-3.5 text-slate-500" />
-                  </h5>
-                  <div className="space-y-1">
-                    {currentProfile.responden && currentProfile.responden.some(r => r && r.trim().length > 0) ? (
-                      currentProfile.responden.map((resp, i) => {
-                        if (!resp || !resp.trim()) return null;
-                        return (
-                          <div key={i} className="flex items-center gap-2 text-[11px] text-slate-700 dark:text-slate-300">
-                            <span className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold flex items-center justify-center shrink-0">
-                              {i + 1}
-                            </span>
-                            <span className="font-medium">{resp}</span>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 italic">
-                        Responden dikosongkan (Belum ada responden ditentukan).
+                    {/* 3. Catatan Presensi Riil */}
+                    <div className="bg-slate-50 dark:bg-slate-800/70 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5">
+                        <h5 className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wider">
+                          Catatan Presensi:
+                        </h5>
+                        <span className="text-xs font-mono font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-300">
+                          {currentProfile.catatanPresensi.persentaseKehadiran}%
+                        </span>
                       </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Periode: {currentProfile.catatanPresensi.periode || currentProfile.periodePenilaian}
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 font-mono text-[11px] pt-1">
+                        <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                          <span className="text-slate-400 block text-[9px]">ALPHA:</span>
+                          <strong>{currentProfile.catatanPresensi.alpha}</strong>
+                        </div>
+                        <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                          <span className="text-slate-400 block text-[9px]">IJIN:</span>
+                          <strong>&plusmn; {currentProfile.catatanPresensi.ijinMenit}m</strong>
+                        </div>
+                        <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                          <span className="text-slate-400 block text-[9px]">SAKIT:</span>
+                          <strong>{currentProfile.catatanPresensi.sakit}</strong>
+                        </div>
+                        <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                          <span className="text-slate-400 block text-[9px]">PULANG AWAL:</span>
+                          <strong>&plusmn; {currentProfile.catatanPresensi.pulangAwalMenit}m</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 4. Responden Penilai */}
+                    <div className="bg-slate-50 dark:bg-slate-800/70 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                      <h5 className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wider border-b border-slate-200 dark:border-slate-700 pb-1.5 flex items-center justify-between">
+                        <span>Responden Penilai:</span>
+                        <Users className="w-3.5 h-3.5 text-slate-500" />
+                      </h5>
+                      <div className="space-y-1">
+                        {currentProfile.responden && currentProfile.responden.some(r => r && r.trim().length > 0) ? (
+                          currentProfile.responden.map((resp, i) => {
+                            if (!resp || !resp.trim()) return null;
+                            return (
+                              <div key={i} className="flex items-center gap-2 text-[11px] text-slate-700 dark:text-slate-300">
+                                <span className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold flex items-center justify-center shrink-0">
+                                  {i + 1}
+                                </span>
+                                <span className="font-medium truncate">{resp}</span>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 italic">
+                            Responden dikosongkan.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+
+              </div>
+
+              {/* Right Column (Only in Side-by-Side Mode) */}
+              {scorecardLayoutMode === 'side' && (
+                <div className="lg:col-span-4 space-y-4">
+                  
+                  {/* 1. Indikator Skala KPI */}
+                  <div className="bg-slate-50 dark:bg-slate-800/70 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                    <h5 className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wider border-b border-slate-200 dark:border-slate-700 pb-1.5 flex items-center justify-between">
+                      <span>Indikator KPI:</span>
+                      <Award className="w-3.5 h-3.5 text-amber-500" />
+                    </h5>
+                    <div className="space-y-1 text-[11px] font-mono">
+                      <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja <= 1.0 ? 'bg-red-100 dark:bg-red-950/60 border border-red-300 font-bold' : ''}`}>
+                        <span className={indexKinerja <= 1.0 ? "font-bold text-red-800 dark:text-red-300" : "text-slate-500"}>a. 0.0 &ndash; 1.0</span>
+                        <span className="font-bold text-red-600">Sangat Kurang {indexKinerja <= 1.0 && '(Posisi Saat Ini)'}</span>
+                      </div>
+                      <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja > 1.0 && indexKinerja <= 2.0 ? 'bg-orange-100 dark:bg-orange-950/60 border border-orange-300 font-bold' : ''}`}>
+                        <span className={indexKinerja > 1.0 && indexKinerja <= 2.0 ? "font-bold text-orange-800 dark:text-orange-300" : "text-slate-500"}>b. 1.1 &ndash; 2.0</span>
+                        <span className="font-bold text-orange-600">Kurang {indexKinerja > 1.0 && indexKinerja <= 2.0 && '(Posisi Saat Ini)'}</span>
+                      </div>
+                      <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja > 2.0 && indexKinerja <= 3.0 ? 'bg-amber-100 dark:bg-amber-950/60 border border-amber-300 font-bold' : ''}`}>
+                        <span className={indexKinerja > 2.0 && indexKinerja <= 3.0 ? "font-bold text-amber-800 dark:text-amber-300" : "text-slate-500"}>c. 2.1 &ndash; 3.0</span>
+                        <span className="font-bold text-amber-600">Cukup {indexKinerja > 2.0 && indexKinerja <= 3.0 && '(Posisi Saat Ini)'}</span>
+                      </div>
+                      <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja > 3.0 && indexKinerja <= 4.0 ? 'bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 font-bold' : ''}`}>
+                        <span className={indexKinerja > 3.0 && indexKinerja <= 4.0 ? "font-bold text-emerald-800 dark:text-emerald-300" : "text-slate-500"}>d. 3.1 &ndash; 4.0</span>
+                        <span className="font-bold text-emerald-800 dark:text-emerald-300">Baik {indexKinerja > 3.0 && indexKinerja <= 4.0 && '(Posisi Saat Ini)'}</span>
+                      </div>
+                      <div className={`flex justify-between py-0.5 px-1.5 rounded transition-all ${indexKinerja > 4.0 ? 'bg-blue-100 dark:bg-blue-950/60 border border-blue-300 font-bold' : ''}`}>
+                        <span className={indexKinerja > 4.0 ? "font-bold text-blue-800 dark:text-blue-300" : "text-slate-500"}>e. 4.1 &ndash; 5.0</span>
+                        <span className="font-bold text-blue-600">Sangat Baik {indexKinerja > 4.0 && '(Posisi Saat Ini)'}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Sanksi Administratif (Anomali Alert) */}
+                  <div className="bg-red-50 dark:bg-red-950/40 p-4 rounded-xl border border-red-200 dark:border-red-900/60 space-y-2 text-xs">
+                    <h5 className="font-bold text-red-800 dark:text-red-300 uppercase text-[11px] tracking-wider border-b border-red-200 dark:border-red-900/60 pb-1.5 flex items-center justify-between">
+                      <span>Sanksi Administratif:</span>
+                      <AlertTriangle className="w-3.5 h-3.5 text-red-600 animate-pulse" />
+                    </h5>
+                    {currentProfile.sanksiAdministratif.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {currentProfile.sanksiAdministratif.map((sanksi, i) => (
+                          <div key={i} className="text-[11px] font-semibold text-red-700 dark:text-red-300 bg-red-100/80 dark:bg-red-900/40 p-2 rounded-lg border border-red-200 dark:border-red-800">
+                            &bull; {sanksi}
+                          </div>
+                        ))}
+                        {currentProfile.nip === 'BK-PP1-025' && (
+                          <p className="text-[10px] text-red-600/90 dark:text-red-400 italic">
+                            Catatan: Insiden penimbangan cengkeh ini bertolak belakang dengan nilai rekan kerja yang memberi skor 3.88 ("Baik").
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Nihil Sanksi (Catatan Disiplin Bersih)</span>
+                      </span>
                     )}
                   </div>
+
+                  {/* 3. Catatan Presensi Riil */}
+                  <div className="bg-slate-50 dark:bg-slate-800/70 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5">
+                      <h5 className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wider">
+                        Catatan Presensi:
+                      </h5>
+                      <span className="text-xs font-mono font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-300">
+                        {currentProfile.catatanPresensi.persentaseKehadiran}%
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                      Periode: {currentProfile.catatanPresensi.periode || currentProfile.periodePenilaian}
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 font-mono text-[11px] pt-1">
+                      <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <span className="text-slate-400 block text-[9px]">ALPHA:</span>
+                        <strong>{currentProfile.catatanPresensi.alpha}</strong>
+                      </div>
+                      <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <span className="text-slate-400 block text-[9px]">IJIN:</span>
+                        <strong>&plusmn; {currentProfile.catatanPresensi.ijinMenit} Menit</strong>
+                      </div>
+                      <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <span className="text-slate-400 block text-[9px]">SAKIT:</span>
+                        <strong>{currentProfile.catatanPresensi.sakit}</strong>
+                      </div>
+                      <div className="p-1.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <span className="text-slate-400 block text-[9px]">PULANG AWAL:</span>
+                        <strong>&plusmn; {currentProfile.catatanPresensi.pulangAwalMenit} Menit</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. Responden Penilaian (4 Rekan Kerja) */}
+                  <div className="bg-slate-50 dark:bg-slate-800/70 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                    <h5 className="font-bold text-slate-900 dark:text-white uppercase text-[11px] tracking-wider border-b border-slate-200 dark:border-slate-700 pb-1.5 flex items-center justify-between">
+                      <span>Responden Penilai:</span>
+                      <Users className="w-3.5 h-3.5 text-slate-500" />
+                    </h5>
+                    <div className="space-y-1">
+                      {currentProfile.responden && currentProfile.responden.some(r => r && r.trim().length > 0) ? (
+                        currentProfile.responden.map((resp, i) => {
+                          if (!resp || !resp.trim()) return null;
+                          return (
+                            <div key={i} className="flex items-center gap-2 text-[11px] text-slate-700 dark:text-slate-300">
+                              <span className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 text-[10px] font-bold flex items-center justify-center shrink-0">
+                                {i + 1}
+                              </span>
+                              <span className="font-medium">{resp}</span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 italic">
+                          Responden dikosongkan (Belum ada responden ditentukan).
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
             </div>
 
@@ -1816,16 +2116,23 @@ export const KpiScorecardCalculator: React.FC = () => {
               </p>
 
               {/* BARS Levels 1 - 5 */}
-              <div className="space-y-2 pt-2">
+              <div className="space-y-2.5 pt-2">
                 
                 {/* Level 5 */}
-                <div className={`p-3 rounded-xl border text-xs ${
-                  selectedBarsParam.avgScore >= 4.1 
-                    ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 font-semibold' 
+                <div className={`p-3 rounded-xl border text-xs transition-all ${
+                  selectedBarsParam.avgScore >= 4.05 
+                    ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-400 dark:border-blue-700 ring-2 ring-blue-500/30 font-semibold' 
                     : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
                 }`}>
                   <div className="flex items-center justify-between font-bold text-blue-700 dark:text-blue-300 mb-1">
-                    <span>Level 5: Sangat Baik (4.1 &ndash; 5.0)</span>
+                    <span className="flex items-center gap-1.5">
+                      <span>Level 5: Sangat Baik (4.1 &ndash; 5.0)</span>
+                      {selectedBarsParam.avgScore >= 4.05 && (
+                        <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-blue-600 text-white font-black uppercase">
+                          Posisi Penilaian Saat Ini ({selectedBarsParam.avgScore.toFixed(2)})
+                        </span>
+                      )}
+                    </span>
                     <span className="text-[10px] font-mono">Performa Istimewa</span>
                   </div>
                   <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-[11px]">
@@ -1833,14 +2140,21 @@ export const KpiScorecardCalculator: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Level 4 (Active in current evaluation) */}
-                <div className={`p-3 rounded-xl border text-xs ${
-                  selectedBarsParam.avgScore >= 3.1 && selectedBarsParam.avgScore <= 4.0
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 ring-2 ring-emerald-500/20' 
+                {/* Level 4 */}
+                <div className={`p-3 rounded-xl border text-xs transition-all ${
+                  selectedBarsParam.avgScore >= 3.05 && selectedBarsParam.avgScore < 4.05
+                    ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-400 dark:border-emerald-700 ring-2 ring-emerald-500/30 font-semibold' 
                     : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
                 }`}>
                   <div className="flex items-center justify-between font-bold text-emerald-800 dark:text-emerald-300 mb-1">
-                    <span>Level 4: Baik (3.1 &ndash; 4.0) &mdash; [Posisi Penilaian Saat Ini]</span>
+                    <span className="flex items-center gap-1.5">
+                      <span>Level 4: Baik (3.1 &ndash; 4.0)</span>
+                      {selectedBarsParam.avgScore >= 3.05 && selectedBarsParam.avgScore < 4.05 && (
+                        <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-emerald-600 text-white font-black uppercase">
+                          Posisi Penilaian Saat Ini ({selectedBarsParam.avgScore.toFixed(2)})
+                        </span>
+                      )}
+                    </span>
                     <span className="text-[10px] font-mono">Standar Operasional</span>
                   </div>
                   <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-[11px]">
@@ -1849,13 +2163,20 @@ export const KpiScorecardCalculator: React.FC = () => {
                 </div>
 
                 {/* Level 3 */}
-                <div className={`p-3 rounded-xl border text-xs ${
-                  selectedBarsParam.avgScore >= 2.1 && selectedBarsParam.avgScore <= 3.0
-                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700' 
+                <div className={`p-3 rounded-xl border text-xs transition-all ${
+                  selectedBarsParam.avgScore >= 2.05 && selectedBarsParam.avgScore < 3.05
+                    ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-400 dark:border-amber-700 ring-2 ring-amber-500/30 font-semibold' 
                     : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
                 }`}>
                   <div className="flex items-center justify-between font-bold text-amber-800 dark:text-amber-300 mb-1">
-                    <span>Level 3: Cukup (2.1 &ndash; 3.0)</span>
+                    <span className="flex items-center gap-1.5">
+                      <span>Level 3: Cukup (2.1 &ndash; 3.0)</span>
+                      {selectedBarsParam.avgScore >= 2.05 && selectedBarsParam.avgScore < 3.05 && (
+                        <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-amber-600 text-white font-black uppercase">
+                          Posisi Penilaian Saat Ini ({selectedBarsParam.avgScore.toFixed(2)})
+                        </span>
+                      )}
+                    </span>
                     <span className="text-[10px] font-mono">Perlu Supervisi</span>
                   </div>
                   <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-[11px]">
@@ -1864,9 +2185,20 @@ export const KpiScorecardCalculator: React.FC = () => {
                 </div>
 
                 {/* Level 2 */}
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
+                <div className={`p-3 rounded-xl border text-xs transition-all ${
+                  selectedBarsParam.avgScore >= 1.05 && selectedBarsParam.avgScore < 2.05
+                    ? 'bg-orange-50 dark:bg-orange-950/50 border-orange-400 dark:border-orange-700 ring-2 ring-orange-500/30 font-semibold' 
+                    : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
+                }`}>
                   <div className="flex items-center justify-between font-bold text-orange-700 dark:text-orange-400 mb-1">
-                    <span>Level 2: Kurang (1.1 &ndash; 2.0)</span>
+                    <span className="flex items-center gap-1.5">
+                      <span>Level 2: Kurang (1.1 &ndash; 2.0)</span>
+                      {selectedBarsParam.avgScore >= 1.05 && selectedBarsParam.avgScore < 2.05 && (
+                        <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-orange-600 text-white font-black uppercase">
+                          Posisi Penilaian Saat Ini ({selectedBarsParam.avgScore.toFixed(2)})
+                        </span>
+                      )}
+                    </span>
                     <span className="text-[10px] font-mono">Banyak Kendala</span>
                   </div>
                   <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-[11px]">
@@ -1875,9 +2207,20 @@ export const KpiScorecardCalculator: React.FC = () => {
                 </div>
 
                 {/* Level 1 */}
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-xs">
+                <div className={`p-3 rounded-xl border text-xs transition-all ${
+                  selectedBarsParam.avgScore < 1.05
+                    ? 'bg-red-50 dark:bg-red-950/50 border-red-400 dark:border-red-700 ring-2 ring-red-500/30 font-semibold' 
+                    : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
+                }`}>
                   <div className="flex items-center justify-between font-bold text-red-700 dark:text-red-400 mb-1">
-                    <span>Level 1: Sangat Kurang (0.0 &ndash; 1.0)</span>
+                    <span className="flex items-center gap-1.5">
+                      <span>Level 1: Sangat Kurang (0.0 &ndash; 1.0)</span>
+                      {selectedBarsParam.avgScore < 1.05 && (
+                        <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-red-600 text-white font-black uppercase">
+                          Posisi Penilaian Saat Ini ({selectedBarsParam.avgScore.toFixed(2)})
+                        </span>
+                      )}
+                    </span>
                     <span className="text-[10px] font-mono">Pelanggaran / Fatal</span>
                   </div>
                   <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-[11px]">

@@ -175,7 +175,7 @@ export function renderOfficialFormPage(doc: jsPDF, options: KpiPdfExportOptions,
   doc.text('KATEGORI', colX.cat + 1, y + 4.5);
   doc.text('TOTAL', colX.total + 7, y + 4.5, { align: 'center' });
   doc.text('AVG', colX.avg + 6, y + 4.5, { align: 'center' });
-  doc.text('KRITERIA', colX.kriteria + 11, y + 4.5, { align: 'center' });
+  doc.text('KRITERIA (BARS)', colX.kriteria + 11, y + 4.5, { align: 'center' });
 
   y += 6.5;
 
@@ -220,10 +220,11 @@ export function renderOfficialFormPage(doc: jsPDF, options: KpiPdfExportOptions,
     doc.setTextColor(180, 83, 9);
     doc.text(param.avgScore.toFixed(2), colX.avg + 6, y + 3.8, { align: 'center' });
 
-    // Kriteria
+    // Kriteria with BARS Level Tag
     doc.setTextColor(15, 23, 42);
-    doc.setFontSize(6.2);
-    doc.text(param.kriteria, colX.kriteria + 11, y + 3.8, { align: 'center' });
+    doc.setFontSize(5.8);
+    const barsLvl = param.avgScore >= 4.05 ? 'L5' : param.avgScore >= 3.05 ? 'L4' : param.avgScore >= 2.05 ? 'L3' : param.avgScore >= 1.05 ? 'L2' : 'L1';
+    doc.text(`[${barsLvl}] ${param.kriteria}`, colX.kriteria + 11, y + 3.8, { align: 'center' });
     doc.setFontSize(6.5);
 
     y += rowHeight;
