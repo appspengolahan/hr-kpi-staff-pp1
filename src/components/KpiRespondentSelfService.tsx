@@ -2,8 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { HR_STAFF_MASTER_DATA, HrStaffRecord } from '../data/hrStaffMasterData';
 import { 
   OfficialKpiProfile, 
-  Kpi360Parameter, 
-  KPI_16_RECOMMENDED_PARAMETERS 
+  Kpi360Parameter
 } from '../data/kpi360TemplateData';
 import { 
   getStaffKpiProfile, 
@@ -78,9 +77,9 @@ export const KpiRespondentSelfService: React.FC<KpiRespondentSelfServiceProps> =
     return HR_STAFF_MASTER_DATA.find(s => s.nip === evaluatedNip) || null;
   }, [evaluatedNip]);
 
-  // Load current evaluated profile
+  // Load current evaluated profile (respects active Opsi C / B / A template)
   const targetProfile = useMemo(() => {
-    return getStaffKpiProfile(evaluatedNip, 'RECOMMENDED_16');
+    return getStaffKpiProfile(evaluatedNip);
   }, [evaluatedNip]);
 
   // Evaluator Info resolved
@@ -151,7 +150,7 @@ export const KpiRespondentSelfService: React.FC<KpiRespondentSelfServiceProps> =
   // Sync scores if evaluatedNip changes
   const handleTargetChange = (nip: string) => {
     setEvaluatedNip(nip);
-    const prof = getStaffKpiProfile(nip, 'RECOMMENDED_16');
+    const prof = getStaffKpiProfile(nip);
     const initial: Record<string, number> = {};
     prof.parameters.forEach(p => {
       initial[p.id] = p.avgScore || 4.0;
@@ -815,9 +814,18 @@ export const KpiRespondentSelfService: React.FC<KpiRespondentSelfServiceProps> =
                   3
                 </span>
                 <div>
-                  <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                    Langkah 3: Lembar Penilaian Parameter Perilaku Nyata (1.0 &ndash; 5.0)
-                  </h4>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                      Langkah 3: Lembar Penilaian Parameter Perilaku Nyata (1.0 &ndash; 5.0)
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-300 font-mono text-[10px] font-bold border border-indigo-300/50">
+                      {targetProfile.templateVersion === 'COMBINED_20'
+                        ? 'Opsi C (20 Poin Sinergis A+B)'
+                        : targetProfile.templateVersion === 'LEGACY_20'
+                          ? 'Opsi A (20 Poin Warisan)'
+                          : 'Opsi B (16 Poin Lean)'}
+                    </span>
+                  </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
                     Gunakan skala perilaku nyata pabrik (*BARS*). Nilai Anda tersimpan mandiri untuk agregasi rapor 360°.
                   </p>

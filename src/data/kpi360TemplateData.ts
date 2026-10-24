@@ -34,6 +34,8 @@ export interface PeerFeedbackItem {
   recommendation?: string;
 }
 
+export type KpiTemplateVersion = 'RECOMMENDED_16' | 'LEGACY_20' | 'COMBINED_20';
+
 export interface OfficialKpiProfile {
   nama: string;
   nip: string;
@@ -41,7 +43,7 @@ export interface OfficialKpiProfile {
   periodePenilaian: string;
   level: string;
   sekup: string;
-  templateVersion?: 'RECOMMENDED_16' | 'LEGACY_20';
+  templateVersion?: KpiTemplateVersion;
   sanksiAdministratif: string[];
   catatanPresensi: {
     persentaseKehadiran: number;
@@ -728,6 +730,381 @@ export const KPI_20_LEGACY_PARAMETERS: Kpi360Parameter[] = [
   }
 ];
 
+// ============================================================================
+// OPSI C: STRUKTUR KOMBINASI TERPADU (20 POIN SINERGIS A & B - SALING MELENGKAPI & BEBAS REDUNDAN)
+// ============================================================================
+// Menggabungkan ketelitian akurasi timbangan, K3, dan 5R dari Opsi B dengan
+// manajemen waktu, growth mindset, kepemimpinan lapangan, dan analisis susut dari Opsi A.
+export const KPI_COMBINED_HYBRID_PARAMETERS: Kpi360Parameter[] = [
+  // 1. KEDISIPLINAN & BUDAYA KERJA (5 Parameter)
+  {
+    id: 'kpi-comb-1a',
+    category: 'Kedisiplinan',
+    subCategoryNumber: '1.a',
+    name: 'Ketepatan Waktu, Presensi & Absensi Kerja',
+    evaluationAuthority: 'DATA_SISTEM',
+    supervisorWeight: 100,
+    totalScore: 16.00,
+    avgScore: 4.00,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Tingkat kehadiran rendah (<85%), sering mangkir/alpha tanpa keterangan, keterlambatan >15 menit.',
+      level2: 'Kehadiran 85-92%, beberapa kali terlambat, input data cut-off BOS sering melewati batas 09:00 WIB.',
+      level3: 'Kehadiran standar pabrik 93-97%, izin terencana dengan surat keterangan, hadir tepat waktu.',
+      level4: 'Konsisten hadir tepat waktu sebelum operasional dimulai, kehadiran 98-99.5%, siap sebelum jam cut-off.',
+      level5: 'Kehadiran sempurna 100%, selalu hadir 15 menit lebih awal, teladan kedisiplinan divisi pengolahan.'
+    }
+  },
+  {
+    id: 'kpi-comb-1b',
+    category: 'Kedisiplinan',
+    subCategoryNumber: '1.b',
+    name: 'Kepatuhan Jam Istirahat & Efektivitas Pergantian Shift',
+    evaluationAuthority: 'MUTLAK_ATASAN',
+    supervisorWeight: 100,
+    totalScore: 15.00,
+    avgScore: 3.75,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Sering molor jam istirahat >20 menit, meninggalkan pos timbang tanpa izin saat antrean bongkar padat.',
+      level2: 'Kerap kembali terlambat dari jam istirahat, ritme kerja terpotong dan memperlambat alur proses rajang.',
+      level3: 'Paham batasan jam istirahat, kembali tepat waktu dengan sesekali toleransi kecil operasional.',
+      level4: 'Disiplin mematuhi jam istirahat shift, meninggalkan pos timbang hanya setelah koordinasi dengan partner.',
+      level5: 'Sangat tertib dan efisien mengelola waktu kerja efektif, transisi istirahat dan serah terima shift tanpa jeda.'
+    }
+  },
+  {
+    id: 'kpi-comb-1c',
+    category: 'Kedisiplinan',
+    subCategoryNumber: '1.c',
+    name: 'Kepatuhan K3 & Penggunaan Alat Pelindung Diri (APD)',
+    evaluationAuthority: 'MUTLAK_ATASAN',
+    supervisorWeight: 100,
+    totalScore: 16.00,
+    avgScore: 4.00,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Menolak atau sengaja tidak menggunakan APD (helm/sepatu safety/masker) di lantai pengolahan bahan.',
+      level2: 'Memakai APD hanya saat ada inspeksi atau teguran mandor/supervisor K3.',
+      level3: 'Memakai APD standar sesuai ketentuan area timbang gudang cengkeh dan lantai proses.',
+      level4: 'Konsisten dan disiplin 100% menggunakan APD lengkap, mematuhi seluruh rambu keselamatan kerja.',
+      level5: 'Pelopor keselamatan kerja (Safety Champion), aktif mengingatkan rekan kerja dan buruh bongkar muat.'
+    }
+  },
+  {
+    id: 'kpi-comb-1d',
+    category: 'Kedisiplinan',
+    subCategoryNumber: '1.d',
+    name: 'Kerapian, Kebersihan Area Kerja & Budaya 5R',
+    evaluationAuthority: 'KOLABORASI_360',
+    supervisorWeight: 25,
+    totalScore: 15.00,
+    avgScore: 3.75,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Area pos timbangan kotor berdebu, arsip nota berserakan, karung cengkeh tidak tertata rapi.',
+      level2: 'Area kerja dibersihkan hanya jika diperingatkan mandor di akhir pergantian shift.',
+      level3: 'Menjaga kebersihan meja kerja dan file administrasi timbang dalam batas wajar.',
+      level4: 'Rapi menerapkan 5R (Ringkas, Rapi, Resik, Rawat, Rajin), dokumen SPK tersusun rapi per tanggal.',
+      level5: 'Standar 5R sempurna, meja dan area timbang selalu bersih higienis, penataan arsip menjadi rujukan.'
+    }
+  },
+  {
+    id: 'kpi-comb-1e',
+    category: 'Kedisiplinan',
+    subCategoryNumber: '1.e',
+    name: 'Manajemen Waktu & Keteraturan Skala Prioritas Harian',
+    evaluationAuthority: 'MUTLAK_ATASAN',
+    supervisorWeight: 100,
+    totalScore: 14.50,
+    avgScore: 3.63,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Manajemen waktu kacau, pekerjaan harian selalu menumpuk di akhir jam shift, sering panik.',
+      level2: 'Kerap kewalahan membagi waktu antara input sistem dan pemeriksaan fisik karung bahan baku.',
+      level3: 'Mampu membagi waktu kerja harian dengan cukup teratur sesuai jadwal operasional rutin.',
+      level4: 'Rapi mengatur prioritas pekerjaan: timbang masuk, catat, verifikasi tara, lalu input sistem BOS tepat waktu.',
+      level5: 'Sangat terstruktur dan efisien, mampu mengantisipasi beban puncak tanpa terjadi bottleneck operasional.'
+    }
+  },
+
+  // 2. TANGGUNG JAWAB & AKURASI OPERASIONAL (5 Parameter)
+  {
+    id: 'kpi-comb-2a',
+    category: 'Tanggungjawab',
+    subCategoryNumber: '2.a',
+    name: 'Kepatuhan terhadap SOP & Regulasi Alur Mutasi Pabrik',
+    evaluationAuthority: 'MUTLAK_ATASAN',
+    supervisorWeight: 100,
+    totalScore: 14.00,
+    avgScore: 3.50,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Mengabaikan SOP penimbangan dan alur mutasi barang, berpotensi memicu kerugian finansial pabrik.',
+      level2: 'Kerap melompati tahapan verifikasi dokumen alur BSPP demi mengejar kecepatan semata.',
+      level3: 'Menjalankan SOP penimbangan cengkeh standar dengan supervisi normal.',
+      level4: 'Kepatuhan tinggi pada seluruh tahapan instruksi kerja, taat checklist verifikasi administrasi.',
+      level5: 'Kepatuhan SOP 100% tanpa celah, mampu memberi masukan penyempurnaan SOP yang lebih aplikatif.'
+    }
+  },
+  {
+    id: 'kpi-comb-2b',
+    category: 'Tanggungjawab',
+    subCategoryNumber: '2.b',
+    name: 'Akurasi Penimbangan & Ketelitian Data (Zero Variance)',
+    evaluationAuthority: 'MUTLAK_ATASAN',
+    supervisorWeight: 100,
+    totalScore: 13.00,
+    avgScore: 3.25,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Sering salah timbang atau salah input tara karung, memicu selisih persediaan fisik vs buku > toleransi pabrik (pernah kena SP/teguran).',
+      level2: 'Ditemukan koreksi nota berulang, kurang teliti saat memeriksa berat netto karung gelondong kering.',
+      level3: 'Akurasi dalam batas toleransi standar pabrik, selisih minor diselesaikan pada rekonsiliasi harian.',
+      level4: 'Tingkat akurasi tinggi (>99.5%), teliti mengecek ulang angka timbangan sebelum penandatanganan nota.',
+      level5: 'Zero Defect / Nol Kesalahan Timbang, rekonsiliasi harian selalu 100% klop, akurasi data sempurna.'
+    }
+  },
+  {
+    id: 'kpi-comb-2c',
+    category: 'Tanggungjawab',
+    subCategoryNumber: '2.c',
+    name: 'Penyelesaian Tugas Hingga Tuntas (Follow-Through)',
+    evaluationAuthority: 'MUTLAK_ATASAN',
+    supervisorWeight: 100,
+    totalScore: 15.00,
+    avgScore: 3.75,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Pekerjaan sering terbengkalai di akhir shift, meninggalkan tumpukan SPK belum terinput ke rekan shift berikutnya.',
+      level2: 'Menyelesaikan tugas hanya separuh, membutuhkan dorongan supervisor untuk merampungkan rekap harian.',
+      level3: 'Menuntaskan seluruh tugas pokok administrasi harian sebelum meninggalkan tempat kerja.',
+      level4: 'Tuntas menyelesaikan pekerjaan secara mandiri, serah terima shift terdokumentasi lengkap dan rapi.',
+      level5: 'Tuntas melebihi ekspektasi, proaktif memvalidasi rekapitulasi ke mandor dan Plt. Ka. Pengolahan sebelum pulang.'
+    }
+  },
+  {
+    id: 'kpi-comb-2d',
+    category: 'Tanggungjawab',
+    subCategoryNumber: '2.d',
+    name: 'Penjagaan Aset, Timbangan Digital & Inventaris Pabrik',
+    evaluationAuthority: 'KOLABORASI_360',
+    supervisorWeight: 25,
+    totalScore: 15.00,
+    avgScore: 3.75,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Ceroboh memperlakukan timbangan digital, komputer pos, atau perlengkapan kerja hingga memicu kerusakan.',
+      level2: 'Kurang peduli pada kalibrasi dan kebersihan load-cell timbangan dari sisa kotoran bahan.',
+      level3: 'Merawat alat kerja dan komputer administrasi dengan kewajaran operasional standar.',
+      level4: 'Tertib menjaga kebersihan platform timbangan, rutin melaporkan jadwal kalibrasi ke tim maintenance.',
+      level5: 'Sangat peduli terhadap efisiensi dan keamanan aset pabrik, zero insiden kerusakan alat akibat kelalaian.'
+    }
+  },
+  {
+    id: 'kpi-comb-2e',
+    category: 'Tanggungjawab',
+    subCategoryNumber: '2.e',
+    name: 'Produktivitas Kerja & Kesigapan Menerima Penugasan Ekstra',
+    evaluationAuthority: 'MUTLAK_ATASAN',
+    supervisorWeight: 100,
+    totalScore: 14.50,
+    avgScore: 3.63,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Menolak tugas tambahan, ritme kerja lambat, banyak waktu luang terbuang percuma saat antrean padat.',
+      level2: 'Menerima tugas perbantuan dengan enggan, output rekapitulasi menurun saat beban bahan meningkat.',
+      level3: 'Produktivitas memenuhi kuota harian pabrik, bersedia menerima tugas ekstra jika dipandu supervisor.',
+      level4: 'Produktif, sigap memproses volume timbangan tinggi, tanggap membantu penimbangan bahan lain saat darurat.',
+      level5: 'Kapasitas kerja sangat tinggi, proaktif membantu kelancaran timbang lintas bahan dengan efisiensi maksimal.'
+    }
+  },
+
+  // 3. SIKAP KERJA, KEPEMIMPINAN & KOLABORASI (5 Parameter)
+  {
+    id: 'kpi-comb-3a',
+    category: 'Sikap',
+    subCategoryNumber: '3.a',
+    name: 'Kerjasama Tim & Saling Membantu Antar-Lini (Teamwork)',
+    evaluationAuthority: 'KOLABORASI_360',
+    supervisorWeight: 25,
+    totalScore: 15.00,
+    avgScore: 3.75,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Egois, enggan membantu rekan saat antrean bongkar muat cengkeh padat, memicu friksi di shift.',
+      level2: 'Membantu hanya sebatas tugas formal, kurang memiliki solidaritas saat divisi menghadapi beban tinggi.',
+      level3: 'Mampu bekerjasama dengan baik bersama sesama rekan administrasi dan petugas timbang.',
+      level4: 'Solidaritas kerja tinggi, proaktif membantu kelancaran kerja rekan demi keberhasilan target shift pabrik.',
+      level5: 'Membangun sinergi luar biasa di seluruh lini, menjadi perekat keharmonisan kerja tim pengolahan.'
+    }
+  },
+  {
+    id: 'kpi-comb-3b',
+    category: 'Sikap',
+    subCategoryNumber: '3.b',
+    name: 'Koordinasi Lintas Bagian & Komunikasi Efektif',
+    evaluationAuthority: 'KOLABORASI_360',
+    supervisorWeight: 25,
+    totalScore: 14.50,
+    avgScore: 3.63,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Gaya komunikasi kasar atau tertutup, tidak mengabarkan jika stok menipis, memicu salah paham.',
+      level2: 'Penyampaian informasi timbang berbelit-belit dan lambat mengabarkan kendala ke pihak terkait.',
+      level3: 'Berkomunikasi secara sopan dan jelas mengenai data mutasi bahan operasional harian.',
+      level4: 'Komunikasi sangat santun, lugas, dan teratur saat menjelaskan angka timbangan pada serah terima.',
+      level5: 'Koordinasi lintas bagian (Gudang-Mandor-QC) sangat harmonis, mampu meredakan ketegangan kerja secara solutif.'
+    }
+  },
+  {
+    id: 'kpi-comb-3c',
+    category: 'Sikap',
+    subCategoryNumber: '3.c',
+    name: 'Kepemimpinan Lapangan & Pengarahan Rekan/Helper',
+    evaluationAuthority: 'KOLABORASI_360',
+    supervisorWeight: 25,
+    totalScore: 13.75,
+    avgScore: 3.44,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Tidak memiliki wibawa kerja, tidak dihiraukan saat mengingatkan prosedur timbang, suasana kerja pasif.',
+      level2: 'Canggung memberikan instruksi, arahan penimbangan sering membingungkan buruh bongkar muat.',
+      level3: 'Mampu mengarahkan buruh/helper penimbangan rutin dengan instruksi yang cukup jelas.',
+      level4: 'Mampu mengoordinasikan buruh dan helper gudang secara tertib, memberi contoh teladan disiplin.',
+      level5: 'Figur panutan lapangan yang disegani dan dihormati, mampu menggerakkan tim menuntaskan target cepat.'
+    }
+  },
+  {
+    id: 'kpi-comb-3d',
+    category: 'Sikap',
+    subCategoryNumber: '3.d',
+    name: 'Keterbukaan terhadap Arahan, Evaluasi & Kritik Atasan',
+    evaluationAuthority: 'MUTLAK_ATASAN',
+    supervisorWeight: 100,
+    totalScore: 15.00,
+    avgScore: 3.75,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Defensif, membantah saat ditegur terkait insiden salah timbang, menyalahkan pihak lain.',
+      level2: 'Mendengar teguran namun lambat memperbaiki kesalahan, berpotensi mengulangi kekeliruan sama.',
+      level3: 'Menerima kritik dan evaluasi kerja atasan dengan sikap terbuka dan komitmen perbaikan wajar.',
+      level4: 'Positif menyikapi teguran, segera mempraktikkan saran perbaikan dan checklist ganda secara konsisten.',
+      level5: 'Sangat dewasa dan berjiwa besar dalam merespon evaluasi, proaktif meminta masukan berkala untuk berkembang.'
+    }
+  },
+  {
+    id: 'kpi-comb-3e',
+    category: 'Sikap',
+    subCategoryNumber: '3.e',
+    name: 'Motivasi Kerja, Dedikasi & Komitmen terhadap Divisi',
+    evaluationAuthority: 'KOLABORASI_360',
+    supervisorWeight: 25,
+    totalScore: 14.50,
+    avgScore: 3.63,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Tampak tidak bersemangat, bekerja seadanya, sering mengeluh dan meninggalkan pos sebelum waktunya.',
+      level2: 'Semangat naik-turun tergantung suasana shift kerja dan tekanan antrean truk bahan.',
+      level3: 'Menunjukkan komitmen kerja yang stabil, tertib, dan bertanggung jawab terhadap tugas harian.',
+      level4: 'Antusias, berdedikasi tinggi menjaga keakuratan stok persediaan cengkeh demi target pabrik.',
+      level5: 'Memiliki sense of ownership luar biasa, menularkan energi positif dan loyalitas ke seluruh tim.'
+    }
+  },
+
+  // 4. KOMPETENSI TEKNIS, ANALISIS & PENGEMBANGAN (5 Parameter)
+  {
+    id: 'kpi-comb-4a',
+    category: 'Kompetensi',
+    subCategoryNumber: '4.a',
+    name: 'Penguasaan Teknis Sistem, Pengetahuan Bahan & Kecepatan Layanan',
+    evaluationAuthority: 'MUTLAK_ATASAN',
+    supervisorWeight: 100,
+    totalScore: 14.00,
+    avgScore: 3.50,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Tidak paham jenis bahan/tara timbangan, proses lamban, antrean menumpuk, sering salah kode varietas.',
+      level2: 'Keterampilan teknis kaku, kecepatan entri data menurun saat volume pengolahan meningkat.',
+      level3: 'Memahami karakteristik cengkeh/bahan baku dan terampil mengoperasikan software timbangan standar.',
+      level4: 'Cepat, tangkas, dan sigap memproses dokumen penimbangan dalam tempo kerja tinggi dengan akurasi prima.',
+      level5: 'Pakar teknis operasional penimbangan dan sistem persediaan, menjadi rujukan pertanyaan rekan kerja.'
+    }
+  },
+  {
+    id: 'kpi-comb-4b',
+    category: 'Kompetensi',
+    subCategoryNumber: '4.b',
+    name: 'Daya Analisis Data, Deteksi Anomali & Kontrol Susut Bahan',
+    evaluationAuthority: 'MUTLAK_ATASAN',
+    supervisorWeight: 100,
+    totalScore: 13.50,
+    avgScore: 3.38,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Tidak menyadari adanya selisih tonase hingga ditegur manajer, tidak peka terhadap kejanggalan tara.',
+      level2: 'Kurang peka terhadap tren kenaikan susut atau ketidakwajaran angka penimbangan antar-batch.',
+      level3: 'Mampu membandingkan angka timbangan masuk dan keluar secara standar sesuai pedoman toleransi.',
+      level4: 'Kritis menganalisis tren susut penimbangan, sigap mendeteksi anomali data sebelum berlanjut ke audit.',
+      level5: 'Daya analisis mendalam terhadap faktor kelembapan bahan, susut pengeringan, dan mitigasi risiko kerugian.'
+    }
+  },
+  {
+    id: 'kpi-comb-4c',
+    category: 'Kompetensi',
+    subCategoryNumber: '4.c',
+    name: 'Penanganan Masalah Lapangan & Problem Solving Terukur',
+    evaluationAuthority: 'MUTLAK_ATASAN',
+    supervisorWeight: 100,
+    totalScore: 13.50,
+    avgScore: 3.38,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Panik atau lepas tangan saat ada selisih timbangan atau sistem BOS offline, melempar masalah ke orang lain.',
+      level2: 'Menunggu arahan atasan sepenuhnya untuk masalah operasional rutin yang sebenarnya bisa dicek mandiri.',
+      level3: 'Mampu menyelesaikan masalah selisih timbangan ringan dengan cek silang fisik ke gudang secara tenang.',
+      level4: 'Tenang dan sistematis mengurai masalah data ganda atau kesalahan nota timbang secara tuntas.',
+      level5: 'Sangat ahli memecahkan problem lapangan kompleks, sigap berkoordinasi cepat dengan IT, QC, dan Maintenance.'
+    }
+  },
+  {
+    id: 'kpi-comb-4d',
+    category: 'Kompetensi',
+    subCategoryNumber: '4.d',
+    name: 'Inisiatif Inovasi & Perbaikan Alur Kerja Berkelanjutan',
+    evaluationAuthority: 'KOLABORASI_360',
+    supervisorWeight: 25,
+    totalScore: 14.00,
+    avgScore: 3.50,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Pasif total, hanya menjiplak cara lama meski diketahui alur kerja boros waktu dan berbelit-belit.',
+      level2: 'Inisiatif rendah, ragu memberikan ide perbaikan alur penimbangan atau penyederhanaan form.',
+      level3: 'Cukup tanggap memberikan ide sederhana saat dimintai masukan dalam rapat evaluasi shift.',
+      level4: 'Proaktif mengusulkan penyederhanaan format pencatatan dan penataan dokumen agar lebih ringkas dan cepat.',
+      level5: 'Inovatif, menghasilkan solusi praktis yang memangkas waktu tunggu antrean timbang dan mengeliminasi human-error.'
+    }
+  },
+  {
+    id: 'kpi-comb-4e',
+    category: 'Kompetensi',
+    subCategoryNumber: '4.e',
+    name: 'Kemauan Belajar & Pengembangan Diri (Growth Mindset)',
+    evaluationAuthority: 'KOLABORASI_360',
+    supervisorWeight: 25,
+    totalScore: 14.50,
+    avgScore: 3.63,
+    kriteria: 'BAIK',
+    barsDescription: {
+      level1: 'Menolak mempelajari sistem/tools baru (misal spreadsheet otomatis/BOS), resisten terhadap perubahan.',
+      level2: 'Lambat mengadopsi instruksi digital baru, membutuhkan pengingat dan pendampingan berulang.',
+      level3: 'Bersedia belajar jika diarahkan atau ditraining oleh supervisor dalam lingkup tugasnya.',
+      level4: 'Cepat tanggap mempelajari formula kalkulasi baru, antusias mengupgrade keterampilan kerja mandiri.',
+      level5: 'Pembelajar mandiri berkecepatan tinggi, proaktif menguasai sistem mutakhir dan aktif membimbing rekan lain.'
+    }
+  }
+];
+
 // Profile Resmi Adin Tri Wartono Default (Menggunakan Rekomendasi OPSI B - 16 Poin)
 export const OFFICIAL_ADIN_KPI_DATA: OfficialKpiProfile = {
   nama: 'ADIN TRI WARTONO',
@@ -805,6 +1182,13 @@ export const OFFICIAL_ADIN_KPI_DATA_LEGACY_20: OfficialKpiProfile = {
   ...OFFICIAL_ADIN_KPI_DATA,
   templateVersion: 'LEGACY_20',
   parameters: KPI_20_LEGACY_PARAMETERS
+};
+
+// Profile Opsi C Kombinasi Sinergis 20 Poin
+export const OFFICIAL_ADIN_KPI_DATA_COMBINED_20: OfficialKpiProfile = {
+  ...OFFICIAL_ADIN_KPI_DATA,
+  templateVersion: 'COMBINED_20',
+  parameters: KPI_COMBINED_HYBRID_PARAMETERS
 };
 
 // Fungsi penerjemah kuantitatif ke kualitatif secara otomatis (Narrative Synthesis Engine)

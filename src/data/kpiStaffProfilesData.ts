@@ -4,9 +4,12 @@ import {
   Kpi360Parameter, 
   PeerFeedbackItem, 
   EvaluationAuthority,
+  KpiTemplateVersion,
   KPI_16_RECOMMENDED_PARAMETERS,
   KPI_20_LEGACY_PARAMETERS,
-  OFFICIAL_ADIN_KPI_DATA
+  KPI_COMBINED_HYBRID_PARAMETERS,
+  OFFICIAL_ADIN_KPI_DATA,
+  OFFICIAL_ADIN_KPI_DATA_COMBINED_20
 } from './kpi360TemplateData';
 
 const KPI_STORAGE_KEY_PREFIX = 'batu_karang_kpi_profile_v2_';
@@ -360,7 +363,7 @@ function generatePeerFeedbacks(staff: HrStaffRecord): PeerFeedbackItem[] {
 // Generate the full baseline profile for any staff member
 export function generateStaffBaselineProfile(
   staff: HrStaffRecord, 
-  templateVersion: 'RECOMMENDED_16' | 'LEGACY_20' = 'RECOMMENDED_16'
+  templateVersion: KpiTemplateVersion = 'COMBINED_20'
 ): OfficialKpiProfile {
   const activePeriod = getStoredActivePeriod();
 
@@ -379,18 +382,30 @@ export function generateStaffBaselineProfile(
         parameters: KPI_20_LEGACY_PARAMETERS
       };
     }
+    if (templateVersion === 'RECOMMENDED_16') {
+      return {
+        ...OFFICIAL_ADIN_KPI_DATA,
+        periodePenilaian: activePeriod,
+        catatanPresensi: baseAdinPresensi,
+        templateVersion: 'RECOMMENDED_16',
+        parameters: KPI_16_RECOMMENDED_PARAMETERS
+      };
+    }
+    // Default: COMBINED_20
     return {
       ...OFFICIAL_ADIN_KPI_DATA,
       periodePenilaian: activePeriod,
       catatanPresensi: baseAdinPresensi,
-      templateVersion: 'RECOMMENDED_16',
-      parameters: KPI_16_RECOMMENDED_PARAMETERS
+      templateVersion: 'COMBINED_20',
+      parameters: KPI_COMBINED_HYBRID_PARAMETERS
     };
   }
 
-  const baseTemplateParams = templateVersion === 'RECOMMENDED_16' 
-    ? KPI_16_RECOMMENDED_PARAMETERS 
-    : KPI_20_LEGACY_PARAMETERS;
+  const baseTemplateParams = templateVersion === 'COMBINED_20'
+    ? KPI_COMBINED_HYBRID_PARAMETERS
+    : templateVersion === 'RECOMMENDED_16'
+      ? KPI_16_RECOMMENDED_PARAMETERS 
+      : KPI_20_LEGACY_PARAMETERS;
 
   const customizedParams: Kpi360Parameter[] = baseTemplateParams.map(param => {
     const { totalScore, avgScore, kriteria } = calculateParamScore(param.avgScore, staff, param);
@@ -421,7 +436,7 @@ export function generateStaffBaselineProfile(
 // Fetch staff profile with local storage persistence
 export function getStaffKpiProfile(
   nip: string, 
-  requestedTemplate?: 'RECOMMENDED_16' | 'LEGACY_20'
+  requestedTemplate?: KpiTemplateVersion
 ): OfficialKpiProfile {
   const staff = HR_STAFF_MASTER_DATA.find(s => s.nip === nip) || HR_STAFF_MASTER_DATA[24]; // default to Adin (id 25)
 
@@ -482,7 +497,7 @@ export function getStaffKpiProfile(
   }
 
   // Fallback to newly generated baseline profile
-  return generateStaffBaselineProfile(staff, requestedTemplate || 'RECOMMENDED_16');
+  return generateStaffBaselineProfile(staff, requestedTemplate || 'COMBINED_20');
 }
 
 // Save profile to localStorage
@@ -496,7 +511,7 @@ export function saveStaffKpiProfile(profile: OfficialKpiProfile): void {
 }
 
 // Reset staff profile to clean factory baseline
-export function resetStaffKpiProfile(nip: string, templateVersion: 'RECOMMENDED_16' | 'LEGACY_20' = 'RECOMMENDED_16'): OfficialKpiProfile {
+export function resetStaffKpiProfile(nip: string, templateVersion: KpiTemplateVersion = 'COMBINED_20'): OfficialKpiProfile {
   try {
     const storageKey = `${KPI_STORAGE_KEY_PREFIX}${nip}`;
     localStorage.removeItem(storageKey);
@@ -536,7 +551,7 @@ export function getAllStaffKpiSummaries(): Array<{
   hasCustomEdits: boolean;
 }> {
   return HR_STAFF_MASTER_DATA.map(staff => {
-    const profile = getStaffKpiProfile(staff.nip, 'RECOMMENDED_16');
+    const profile = getStaffKpiProfile(staff.nip);
     const index = calculateProfileIndex(profile);
     const kriteria = getKriteriaFromScore(index);
     return {

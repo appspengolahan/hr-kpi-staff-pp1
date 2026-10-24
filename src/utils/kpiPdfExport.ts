@@ -144,9 +144,14 @@ export function renderOfficialFormPage(doc: jsPDF, options: KpiPdfExportOptions,
 
   // Parameters Table Header
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(15, 23, 42);
-  doc.text(`TABEL PARAMETER EVALUASI KINERJA (${profile.parameters.length} POIN STANDAR INDUSTRI)`, 14, y);
+  const templateLabel = profile.templateVersion === 'COMBINED_20' 
+    ? 'OPSI C - 20 POIN SINERGIS A & B' 
+    : profile.templateVersion === 'RECOMMENDED_16' 
+      ? 'OPSI B - 16 POIN LEAN INDUSTRI' 
+      : 'OPSI A - 20 POIN WARISAN FISIK';
+  doc.text(`TABEL PARAMETER EVALUASI KINERJA (${templateLabel})`, 14, y);
   y += 4;
 
   // Table columns definition

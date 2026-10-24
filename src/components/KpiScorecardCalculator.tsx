@@ -6,10 +6,13 @@ import { RoleId, KpiMetric } from '../types';
 import { 
   OFFICIAL_ADIN_KPI_DATA, 
   OFFICIAL_ADIN_KPI_DATA_LEGACY_20,
+  OFFICIAL_ADIN_KPI_DATA_COMBINED_20,
   KPI_16_RECOMMENDED_PARAMETERS,
   KPI_20_LEGACY_PARAMETERS,
+  KPI_COMBINED_HYBRID_PARAMETERS,
   OfficialKpiProfile, 
   Kpi360Parameter, 
+  KpiTemplateVersion,
   generateQualitativeSynthesis, 
   QualitativeSynthesis 
 } from '../data/kpi360TemplateData';
@@ -215,7 +218,7 @@ export const KpiScorecardCalculator: React.FC = () => {
         initialNip = targetParam;
       }
     }
-    return getStaffKpiProfile(initialNip, 'RECOMMENDED_16');
+    return getStaffKpiProfile(initialNip, 'COMBINED_20');
   });
 
   // Check if current employee profile has custom saved modifications
@@ -228,12 +231,27 @@ export const KpiScorecardCalculator: React.FC = () => {
     return HR_STAFF_MASTER_DATA.find(s => s.nip === selectedStaffNip) || null;
   }, [selectedStaffNip]);
 
-  // Switch between Option B (16 Recommended Industrial Points) and Option A (20 Legacy Points)
-  const handleSwitchTemplate = (version: 'RECOMMENDED_16' | 'LEGACY_20') => {
+  // Switch between Option C (20 Combined Hybrid), Option B (16 Lean Industrial) and Option A (20 Legacy)
+  const handleSwitchTemplate = (version: KpiTemplateVersion) => {
     const updated = getStaffKpiProfile(selectedStaffNip, version);
     setCurrentProfile(updated);
     saveStaffKpiProfile(updated);
+    const labels: Record<KpiTemplateVersion, string> = {
+      COMBINED_20: 'Opsi C (20 Poin Sinergis A & B)',
+      RECOMMENDED_16: 'Opsi B (16 Poin Lean Industri)',
+      LEGACY_20: 'Opsi A (20 Poin Warisan Fisik)'
+    };
+    setSwitchToast(`Berhasil beralih ke: ${labels[version]}`);
+    setTimeout(() => setSwitchToast(null), 3500);
   };
+
+  // Determine active template version
+  const activeTemplateVersion: KpiTemplateVersion = useMemo(() => {
+    if (currentProfile.templateVersion) return currentProfile.templateVersion;
+    if (currentProfile.parameters.some(p => p.id.startsWith('kpi-comb-'))) return 'COMBINED_20';
+    if (currentProfile.parameters.length === 16) return 'RECOMMENDED_16';
+    return 'LEGACY_20';
+  }, [currentProfile]);
 
   // Filter category in Official Form
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('ALL');
@@ -303,7 +321,7 @@ export const KpiScorecardCalculator: React.FC = () => {
     const staff = HR_STAFF_MASTER_DATA.find(s => s.nip === nip);
     if (staff) {
       // 1. Load staff-specific KPI profile (with saved edits if present)
-      const currentVersion = currentProfile.templateVersion || 'RECOMMENDED_16';
+      const currentVersion = currentProfile.templateVersion || 'COMBINED_20';
       const loadedProfile = getStaffKpiProfile(nip, currentVersion);
       setCurrentProfile(loadedProfile);
 
@@ -907,54 +925,96 @@ export const KpiScorecardCalculator: React.FC = () => {
               </div>
             </div>
 
-            {/* Template Version Switcher: Option B (16 Lean Industrial Parameters) vs Option A (20 Legacy) */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-gradient-to-r from-amber-500/10 via-slate-50 to-slate-100 dark:from-amber-950/20 dark:via-slate-900/60 dark:to-slate-900 rounded-xl border border-amber-300/60 dark:border-amber-800/40">
+            {/* Template Version Switcher: Option C (20 Hybrid Sinergis) vs Option B (16 Lean Industrial) vs Option A (20 Legacy) */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3 bg-gradient-to-r from-amber-500/10 via-slate-50 to-indigo-50/50 dark:from-amber-950/20 dark:via-slate-900/60 dark:to-indigo-950/20 rounded-xl border border-amber-300/60 dark:border-amber-800/40">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-black shrink-0">
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <div className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                     <span>Struktur Formulir KPI 360°:</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 font-bold border border-amber-500/30">
-                      {currentProfile.parameters.length === 16 ? 'OPSI B (16 Poin Industri)' : 'OPSI A (20 Poin Warisan)'}
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-900 dark:text-amber-300 font-bold border border-amber-500/30">
+                      {activeTemplateVersion === 'COMBINED_20'
+                        ? 'OPSI C (20 Poin Sinergis A & B)'
+                        : activeTemplateVersion === 'RECOMMENDED_16'
+                          ? 'OPSI B (16 Poin Industri Lean)'
+                          : 'OPSI A (20 Poin Warisan Fisik)'}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {currentProfile.parameters.length === 16 
-                      ? 'Format Standar Manufaktur: Dilengkapi K3, 5R, dan Akurasi Zero-Variance Timbangan (Bebas Duplikasi).' 
-                      : 'Format Fisik Warisan: Mengikuti 20 item kuesioner lembar cetak lama PT Batu Karang.'}
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                    {activeTemplateVersion === 'COMBINED_20' && (
+                      <span>
+                        <strong>Kombinasi Terpadu (Sinergis A &amp; B):</strong> Menggabungkan akurasi timbangan, K3 &amp; 5R dari Opsi B dengan manajemen waktu, growth mindset, kepemimpinan lapangan, dan analisis susut dari Opsi A tanpa redundansi.
+                      </span>
+                    )}
+                    {activeTemplateVersion === 'RECOMMENDED_16' && (
+                      <span>
+                        <strong>Standar Manufaktur Lean:</strong> 16 parameter esensial berfokus pada keselamatan kerja (K3), 5R, dan akurasi zero-variance timbangan digital.
+                      </span>
+                    )}
+                    {activeTemplateVersion === 'LEGACY_20' && (
+                      <span>
+                        <strong>Format Fisik Warisan:</strong> Mengikuti 20 item kuesioner lembar cetak evaluasi klasik PT Batu Karang.
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+              <div className="flex items-center gap-1.5 self-start lg:self-auto shrink-0 flex-wrap">
+                {/* Opsi C: Kombinasi Terpadu */}
+                <button
+                  type="button"
+                  onClick={() => handleSwitchTemplate('COMBINED_20')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    activeTemplateVersion === 'COMBINED_20'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm'
+                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                  }`}
+                  title="Pilih Opsi C: Kombinasi komplementer bebas redundansi (20 parameter sinergis A + B)"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-slate-950" />
+                  <span>Opsi C (20 Poin)</span>
+                  <span className="text-[9px] uppercase px-1 rounded bg-amber-950/20 dark:bg-amber-950/40 text-slate-950 dark:text-amber-200 font-black">
+                    Sinergi A+B
+                  </span>
+                </button>
+
+                {/* Opsi B: Rekomendasi Industri */}
                 <button
                   type="button"
                   onClick={() => handleSwitchTemplate('RECOMMENDED_16')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    currentProfile.parameters.length === 16
+                    activeTemplateVersion === 'RECOMMENDED_16'
                       ? 'bg-amber-500 text-slate-950 shadow-sm'
                       : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
                   }`}
+                  title="Pilih Opsi B: Format lean manufaktur 16 poin"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-slate-950" />
+                  <Award className="w-3.5 h-3.5 text-slate-950" />
                   <span>Opsi B (16 Poin)</span>
-                  <span className="text-[9px] uppercase px-1 rounded bg-amber-950/20 dark:bg-amber-950/40 text-slate-950 dark:text-amber-200 font-black">
-                    Rekomendasi
+                  <span className="text-[9px] uppercase px-1 rounded bg-slate-900/10 dark:bg-slate-950/40 text-slate-800 dark:text-slate-300 font-semibold">
+                    Lean
                   </span>
                 </button>
+
+                {/* Opsi A: Format Warisan */}
                 <button
                   type="button"
                   onClick={() => handleSwitchTemplate('LEGACY_20')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    currentProfile.parameters.length === 20
+                    activeTemplateVersion === 'LEGACY_20'
                       ? 'bg-amber-500 text-slate-950 shadow-sm'
                       : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
                   }`}
+                  title="Pilih Opsi A: Format warisan lembar cetak 20 poin lama"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   <span>Opsi A (20 Poin)</span>
+                  <span className="text-[9px] uppercase px-1 rounded bg-slate-900/10 dark:bg-slate-950/40 text-slate-800 dark:text-slate-300 font-semibold">
+                    Warisan
+                  </span>
                 </button>
               </div>
             </div>

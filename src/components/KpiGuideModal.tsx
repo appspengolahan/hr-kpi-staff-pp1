@@ -114,8 +114,9 @@ export const KpiGuideModal: React.FC<KpiGuideModalProps> = ({ isOpen, onClose })
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-600 dark:text-slate-300 pl-1">
                   <li><strong>Total &amp; Rata-rata:</strong> Dijumlahkan dari 4 responden menghasilkan <em>Indeks Kinerja (1.00 – 5.00)</em>.</li>
-                  <li><strong>Opsi B (16 Poin):</strong> Standar Manufaktur (Bebas duplikasi, dilengkapi K3, 5R &amp; Akurasi Timbangan).</li>
-                  <li><strong>Opsi A (20 Poin):</strong> Template format arsip lama divisi.</li>
+                  <li><strong>Opsi C (20 Poin):</strong> Kombinasi Terpadu (Sinergis A &amp; B, saling melengkapi tanpa redundansi).</li>
+                  <li><strong>Opsi B (16 Poin):</strong> Standar Manufaktur Lean (Bebas duplikasi, fokus K3, 5R &amp; Akurasi Timbangan).</li>
+                  <li><strong>Opsi A (20 Poin):</strong> Template format warisan fisik klasik PT Batu Karang.</li>
                 </ul>
               </div>
 
